@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import uvicorn
 
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -294,3 +295,13 @@ def export_graph(episode_id: str = Query(default="")) -> dict[str, object]:
 			for item in annotations
 		],
 	}
+
+
+def main() -> None:
+	host = os.getenv("GRAPHREVIEW_HOST", "0.0.0.0")
+	port = int(os.getenv("GRAPHREVIEW_PORT", "8000"))
+	uvicorn.run("server.app:app", host=host, port=port, reload=False)
+
+
+if __name__ == "__main__":
+	main()
