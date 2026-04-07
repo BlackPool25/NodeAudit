@@ -1,0 +1,39 @@
+{
+  "issues": [
+    {
+      "id": "STYLE_001",
+      "module": "auth",
+      "line": 7,
+      "type": "style",
+      "tool": "pylint",
+      "code": "C0301",
+      "message_contains": "Line too long"
+    },
+    {
+      "id": "LOGIC_001",
+      "module": "checkout",
+      "line": 7,
+      "type": "logic",
+      "description": "Negative total symptom due to dependency behavior in cart"
+    },
+    {
+      "id": "SECURITY_001",
+      "module": "payments",
+      "line": 9,
+      "type": "security",
+      "tool": "bandit",
+      "code": "B602",
+      "message_contains": "shell=True"
+    },
+    {
+      "id": "CASCADE_001",
+      "module": "checkout",
+      "line": 7,
+      "type": "dependency_cascade",
+      "root_cause_module": "config",
+      "surface_module": "checkout",
+      "path": ["config", "cart", "checkout"],
+      "description": "DISCOUNT_RATE configured as 20 instead of 0.20 causes cart miscalculation and checkout failure"
+    }
+  ]
+}
