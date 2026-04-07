@@ -98,7 +98,36 @@ def run_bandit(path: Path) -> list[LinterIssue]:
     return issues
 
 
+def run_pyflakes(path: Path) -> list[LinterIssue]:
+    cmd = [sys.executable, "-m", "pyflakes", str(path)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    payload = (proc.stdout or "").strip()
+    if not payload:
+        return []
+
+    issues: list[LinterIssue] = []
+    for raw_line in payload.splitlines():
+        line = 0
+        message = raw_line.strip()
+        if ":" in raw_line:
+            parts = raw_line.split(":", 3)
+            if len(parts) >= 3 and parts[1].isdigit():
+                line = int(parts[1])
+                message = parts[3].strip() if len(parts) == 4 else message
+        issues.append(
+            LinterIssue(
+                tool="pyflakes",
+                line=line,
+                severity="medium",
+                code="PYF000",
+                message=message,
+            )
+        )
+    return issues
+
+
 def run_linters(path: Path) -> list[LinterIssue]:
     issues = run_pylint(path)
     issues.extend(run_bandit(path))
+    issues.extend(run_pyflakes(path))
     return issues

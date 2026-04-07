@@ -15,6 +15,8 @@ from parser.summarizer import summarize_module
 class ImportRef(BaseModel):
     target_module: str
     import_line: str
+    scope: str = "module_level"
+    weight: float = 1.0
     edge_type: EdgeType = EdgeType.EXPLICIT_IMPORT
 
 
@@ -33,7 +35,12 @@ class _Visitor(ast.NodeVisitor):
         self.function_signatures: list[str] = []
         self.classes: list[str] = []
         self.constants: list[str] = []
-        self.imports: list[tuple[str, str]] = []
+        self.imports: list[tuple[str, str, str]] = []
+        self._scope_stack: list[str] = []
+
+    @property
+    def _scope(self) -> str:
+        return "function_level" if self._scope_stack else "module_level"
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         args: list[str] = []
@@ -44,7 +51,11 @@ class _Visitor(ast.NodeVisitor):
                 args.append(arg.arg)
         returns = ast.unparse(node.returns) if node.returns is not None else "None"
         self.function_signatures.append(f"{node.name}({', '.join(args)})->{returns}")
-        self.generic_visit(node)
+        self._scope_stack.append(node.name)
+        try:
+            self.generic_visit(node)
+        finally:
+            self._scope_stack.pop()
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
         fake = ast.FunctionDef(
@@ -59,19 +70,23 @@ class _Visitor(ast.NodeVisitor):
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
         self.classes.append(node.name)
-        self.generic_visit(node)
+        self._scope_stack.append(node.name)
+        try:
+            self.generic_visit(node)
+        finally:
+            self._scope_stack.pop()
 
     def visit_Import(self, node: ast.Import) -> None:
         line = ast.get_source_segment(self._source, node) or "import"
         for alias in node.names:
-            self.imports.append((alias.name, line))
+            self.imports.append((alias.name, line, self._scope))
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
         module = node.module or ""
         level = node.level or 0
         dotted = "." * level + module
         line = ast.get_source_segment(self._source, node) or "from"
-        self.imports.append((dotted, line))
+        self.imports.append((dotted, line, self._scope))
 
     def visit_Assign(self, node: ast.Assign) -> None:
         if isinstance(node.value, ast.Constant):
@@ -105,7 +120,18 @@ def _resolve_relative_import(current_module: str, ref: str) -> str:
 def parse_python_file(path: Path, root_dir: Path) -> ParsedModule:
     source = path.read_text(encoding="utf-8")
     module_id = _to_module_id(path, root_dir)
-    tree = ast.parse(source)
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return ParsedModule(
+            module_id=module_id,
+            raw_code=source,
+            function_signatures=[],
+            classes=[],
+            imports=[],
+            constants=[],
+            dependencies=[],
+        )
 
     visitor = _Visitor()
     visitor.parse(tree, source)
@@ -114,9 +140,11 @@ def parse_python_file(path: Path, root_dir: Path) -> ParsedModule:
         ImportRef(
             target_module=_resolve_relative_import(module_id, name),
             import_line=line,
+            scope=scope,
+            weight=0.5 if scope == "function_level" else 1.0,
             edge_type=EdgeType.EXPLICIT_IMPORT,
         )
-        for name, line in visitor.imports
+        for name, line, scope in visitor.imports
     ]
 
     dependencies = [imp.target_module for imp in imports if imp.target_module]
@@ -138,8 +166,10 @@ def parse_directory(target_dir: Path, db_path: str | None = None) -> Store:
     store.clear_source_graph()
 
     py_files = sorted(target_dir.rglob("*.py"))
-    for py_file in py_files:
-        parsed = parse_python_file(py_file, target_dir)
+    parsed_modules = [parse_python_file(py_file, target_dir) for py_file in py_files]
+    known_module_ids = {parsed.module_id for parsed in parsed_modules}
+
+    for py_file, parsed in zip(py_files, parsed_modules):
         issues = run_linters(py_file)
         summary = summarize_module(parsed, issues)
 
@@ -155,13 +185,13 @@ def parse_directory(target_dir: Path, db_path: str | None = None) -> Store:
             [issue.model_dump() for issue in issues],
         )
         for imported in parsed.imports:
-            if imported.target_module:
+            if imported.target_module and imported.target_module in known_module_ids:
                 store.upsert_edge(
                     source_module_id=parsed.module_id,
                     target_module_id=imported.target_module,
                     edge_type=imported.edge_type,
                     import_line=imported.import_line,
-                    weight=1.0,
+                    weight=imported.weight,
                 )
 
     return store

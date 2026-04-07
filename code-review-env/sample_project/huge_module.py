@@ -1,0 +1,628 @@
+"""Large synthetic file for chunking checks."""
+
+
+def bootstrap() -> int:
+    return 1
+LINE_1 = 1
+LINE_2 = 2
+LINE_3 = 3
+LINE_4 = 4
+LINE_5 = 5
+LINE_6 = 6
+LINE_7 = 7
+LINE_8 = 8
+LINE_9 = 9
+LINE_10 = 10
+LINE_11 = 11
+LINE_12 = 12
+LINE_13 = 13
+LINE_14 = 14
+LINE_15 = 15
+LINE_16 = 16
+LINE_17 = 17
+LINE_18 = 18
+LINE_19 = 19
+LINE_20 = 20
+LINE_21 = 21
+LINE_22 = 22
+LINE_23 = 23
+LINE_24 = 24
+LINE_25 = 25
+LINE_26 = 26
+LINE_27 = 27
+LINE_28 = 28
+LINE_29 = 29
+LINE_30 = 30
+LINE_31 = 31
+LINE_32 = 32
+LINE_33 = 33
+LINE_34 = 34
+LINE_35 = 35
+LINE_36 = 36
+LINE_37 = 37
+LINE_38 = 38
+LINE_39 = 39
+LINE_40 = 40
+LINE_41 = 41
+LINE_42 = 42
+LINE_43 = 43
+LINE_44 = 44
+LINE_45 = 45
+LINE_46 = 46
+LINE_47 = 47
+LINE_48 = 48
+LINE_49 = 49
+LINE_50 = 50
+LINE_51 = 51
+LINE_52 = 52
+LINE_53 = 53
+LINE_54 = 54
+LINE_55 = 55
+LINE_56 = 56
+LINE_57 = 57
+LINE_58 = 58
+LINE_59 = 59
+LINE_60 = 60
+LINE_61 = 61
+LINE_62 = 62
+LINE_63 = 63
+LINE_64 = 64
+LINE_65 = 65
+LINE_66 = 66
+LINE_67 = 67
+LINE_68 = 68
+LINE_69 = 69
+LINE_70 = 70
+LINE_71 = 71
+LINE_72 = 72
+LINE_73 = 73
+LINE_74 = 74
+LINE_75 = 75
+LINE_76 = 76
+LINE_77 = 77
+LINE_78 = 78
+LINE_79 = 79
+LINE_80 = 80
+LINE_81 = 81
+LINE_82 = 82
+LINE_83 = 83
+LINE_84 = 84
+LINE_85 = 85
+LINE_86 = 86
+LINE_87 = 87
+LINE_88 = 88
+LINE_89 = 89
+LINE_90 = 90
+LINE_91 = 91
+LINE_92 = 92
+LINE_93 = 93
+LINE_94 = 94
+LINE_95 = 95
+LINE_96 = 96
+LINE_97 = 97
+LINE_98 = 98
+LINE_99 = 99
+LINE_100 = 100
+LINE_101 = 101
+LINE_102 = 102
+LINE_103 = 103
+LINE_104 = 104
+LINE_105 = 105
+LINE_106 = 106
+LINE_107 = 107
+LINE_108 = 108
+LINE_109 = 109
+LINE_110 = 110
+LINE_111 = 111
+LINE_112 = 112
+LINE_113 = 113
+LINE_114 = 114
+LINE_115 = 115
+LINE_116 = 116
+LINE_117 = 117
+LINE_118 = 118
+LINE_119 = 119
+LINE_120 = 120
+LINE_121 = 121
+LINE_122 = 122
+LINE_123 = 123
+LINE_124 = 124
+LINE_125 = 125
+LINE_126 = 126
+LINE_127 = 127
+LINE_128 = 128
+LINE_129 = 129
+LINE_130 = 130
+LINE_131 = 131
+LINE_132 = 132
+LINE_133 = 133
+LINE_134 = 134
+LINE_135 = 135
+LINE_136 = 136
+LINE_137 = 137
+LINE_138 = 138
+LINE_139 = 139
+LINE_140 = 140
+LINE_141 = 141
+LINE_142 = 142
+LINE_143 = 143
+LINE_144 = 144
+LINE_145 = 145
+LINE_146 = 146
+LINE_147 = 147
+LINE_148 = 148
+LINE_149 = 149
+LINE_150 = 150
+LINE_151 = 151
+LINE_152 = 152
+LINE_153 = 153
+LINE_154 = 154
+LINE_155 = 155
+LINE_156 = 156
+LINE_157 = 157
+LINE_158 = 158
+LINE_159 = 159
+LINE_160 = 160
+LINE_161 = 161
+LINE_162 = 162
+LINE_163 = 163
+LINE_164 = 164
+LINE_165 = 165
+LINE_166 = 166
+LINE_167 = 167
+LINE_168 = 168
+LINE_169 = 169
+LINE_170 = 170
+LINE_171 = 171
+LINE_172 = 172
+LINE_173 = 173
+LINE_174 = 174
+LINE_175 = 175
+LINE_176 = 176
+LINE_177 = 177
+LINE_178 = 178
+LINE_179 = 179
+LINE_180 = 180
+LINE_181 = 181
+LINE_182 = 182
+LINE_183 = 183
+LINE_184 = 184
+LINE_185 = 185
+LINE_186 = 186
+LINE_187 = 187
+LINE_188 = 188
+LINE_189 = 189
+LINE_190 = 190
+LINE_191 = 191
+LINE_192 = 192
+LINE_193 = 193
+LINE_194 = 194
+LINE_195 = 195
+LINE_196 = 196
+LINE_197 = 197
+LINE_198 = 198
+LINE_199 = 199
+LINE_200 = 200
+LINE_201 = 201
+LINE_202 = 202
+LINE_203 = 203
+LINE_204 = 204
+LINE_205 = 205
+LINE_206 = 206
+LINE_207 = 207
+LINE_208 = 208
+LINE_209 = 209
+LINE_210 = 210
+LINE_211 = 211
+LINE_212 = 212
+LINE_213 = 213
+LINE_214 = 214
+LINE_215 = 215
+LINE_216 = 216
+LINE_217 = 217
+LINE_218 = 218
+LINE_219 = 219
+LINE_220 = 220
+LINE_221 = 221
+LINE_222 = 222
+LINE_223 = 223
+LINE_224 = 224
+LINE_225 = 225
+LINE_226 = 226
+LINE_227 = 227
+LINE_228 = 228
+LINE_229 = 229
+LINE_230 = 230
+LINE_231 = 231
+LINE_232 = 232
+LINE_233 = 233
+LINE_234 = 234
+LINE_235 = 235
+LINE_236 = 236
+LINE_237 = 237
+LINE_238 = 238
+LINE_239 = 239
+LINE_240 = 240
+LINE_241 = 241
+LINE_242 = 242
+LINE_243 = 243
+LINE_244 = 244
+LINE_245 = 245
+LINE_246 = 246
+LINE_247 = 247
+LINE_248 = 248
+LINE_249 = 249
+LINE_250 = 250
+LINE_251 = 251
+LINE_252 = 252
+LINE_253 = 253
+LINE_254 = 254
+LINE_255 = 255
+LINE_256 = 256
+LINE_257 = 257
+LINE_258 = 258
+LINE_259 = 259
+LINE_260 = 260
+LINE_261 = 261
+LINE_262 = 262
+LINE_263 = 263
+LINE_264 = 264
+LINE_265 = 265
+LINE_266 = 266
+LINE_267 = 267
+LINE_268 = 268
+LINE_269 = 269
+LINE_270 = 270
+LINE_271 = 271
+LINE_272 = 272
+LINE_273 = 273
+LINE_274 = 274
+LINE_275 = 275
+LINE_276 = 276
+LINE_277 = 277
+LINE_278 = 278
+LINE_279 = 279
+LINE_280 = 280
+LINE_281 = 281
+LINE_282 = 282
+LINE_283 = 283
+LINE_284 = 284
+LINE_285 = 285
+LINE_286 = 286
+LINE_287 = 287
+LINE_288 = 288
+LINE_289 = 289
+LINE_290 = 290
+LINE_291 = 291
+LINE_292 = 292
+LINE_293 = 293
+LINE_294 = 294
+LINE_295 = 295
+LINE_296 = 296
+LINE_297 = 297
+LINE_298 = 298
+LINE_299 = 299
+LINE_300 = 300
+LINE_301 = 301
+LINE_302 = 302
+LINE_303 = 303
+LINE_304 = 304
+LINE_305 = 305
+LINE_306 = 306
+LINE_307 = 307
+LINE_308 = 308
+LINE_309 = 309
+LINE_310 = 310
+LINE_311 = 311
+LINE_312 = 312
+LINE_313 = 313
+LINE_314 = 314
+LINE_315 = 315
+LINE_316 = 316
+LINE_317 = 317
+LINE_318 = 318
+LINE_319 = 319
+LINE_320 = 320
+LINE_321 = 321
+LINE_322 = 322
+LINE_323 = 323
+LINE_324 = 324
+LINE_325 = 325
+LINE_326 = 326
+LINE_327 = 327
+LINE_328 = 328
+LINE_329 = 329
+LINE_330 = 330
+LINE_331 = 331
+LINE_332 = 332
+LINE_333 = 333
+LINE_334 = 334
+LINE_335 = 335
+LINE_336 = 336
+LINE_337 = 337
+LINE_338 = 338
+LINE_339 = 339
+LINE_340 = 340
+LINE_341 = 341
+LINE_342 = 342
+LINE_343 = 343
+LINE_344 = 344
+LINE_345 = 345
+LINE_346 = 346
+LINE_347 = 347
+LINE_348 = 348
+LINE_349 = 349
+LINE_350 = 350
+LINE_351 = 351
+LINE_352 = 352
+LINE_353 = 353
+LINE_354 = 354
+LINE_355 = 355
+LINE_356 = 356
+LINE_357 = 357
+LINE_358 = 358
+LINE_359 = 359
+LINE_360 = 360
+LINE_361 = 361
+LINE_362 = 362
+LINE_363 = 363
+LINE_364 = 364
+LINE_365 = 365
+LINE_366 = 366
+LINE_367 = 367
+LINE_368 = 368
+LINE_369 = 369
+LINE_370 = 370
+LINE_371 = 371
+LINE_372 = 372
+LINE_373 = 373
+LINE_374 = 374
+LINE_375 = 375
+LINE_376 = 376
+LINE_377 = 377
+LINE_378 = 378
+LINE_379 = 379
+LINE_380 = 380
+LINE_381 = 381
+LINE_382 = 382
+LINE_383 = 383
+LINE_384 = 384
+LINE_385 = 385
+LINE_386 = 386
+LINE_387 = 387
+LINE_388 = 388
+LINE_389 = 389
+LINE_390 = 390
+LINE_391 = 391
+LINE_392 = 392
+LINE_393 = 393
+LINE_394 = 394
+LINE_395 = 395
+LINE_396 = 396
+LINE_397 = 397
+LINE_398 = 398
+LINE_399 = 399
+LINE_400 = 400
+LINE_401 = 401
+LINE_402 = 402
+LINE_403 = 403
+LINE_404 = 404
+LINE_405 = 405
+LINE_406 = 406
+LINE_407 = 407
+LINE_408 = 408
+LINE_409 = 409
+LINE_410 = 410
+LINE_411 = 411
+LINE_412 = 412
+LINE_413 = 413
+LINE_414 = 414
+LINE_415 = 415
+LINE_416 = 416
+LINE_417 = 417
+LINE_418 = 418
+LINE_419 = 419
+LINE_420 = 420
+LINE_421 = 421
+LINE_422 = 422
+LINE_423 = 423
+LINE_424 = 424
+LINE_425 = 425
+LINE_426 = 426
+LINE_427 = 427
+LINE_428 = 428
+LINE_429 = 429
+LINE_430 = 430
+
+
+def helper_alpha() -> int:
+    return LINE_10 + LINE_20
+
+
+def helper_beta() -> int:
+    return helper_alpha()
+
+
+class GiantService:
+    def run(self) -> int:
+        return helper_beta()
+
+
+def auto_func_1() -> int:
+    return 1
+
+
+def auto_func_2() -> int:
+    return 2
+
+
+def auto_func_3() -> int:
+    return 3
+
+
+def auto_func_4() -> int:
+    return 4
+
+
+def auto_func_5() -> int:
+    return 5
+
+
+def auto_func_6() -> int:
+    return 6
+
+
+def auto_func_7() -> int:
+    return 7
+
+
+def auto_func_8() -> int:
+    return 8
+
+
+def auto_func_9() -> int:
+    return 9
+
+
+def auto_func_10() -> int:
+    return 10
+
+
+def auto_func_11() -> int:
+    return 11
+
+
+def auto_func_12() -> int:
+    return 12
+
+
+def auto_func_13() -> int:
+    return 13
+
+
+def auto_func_14() -> int:
+    return 14
+
+
+def auto_func_15() -> int:
+    return 15
+
+
+def auto_func_16() -> int:
+    return 16
+
+
+def auto_func_17() -> int:
+    return 17
+
+
+def auto_func_18() -> int:
+    return 18
+
+
+def auto_func_19() -> int:
+    return 19
+
+
+def auto_func_20() -> int:
+    return 20
+
+
+def auto_func_21() -> int:
+    return 21
+
+
+def auto_func_22() -> int:
+    return 22
+
+
+def auto_func_23() -> int:
+    return 23
+
+
+def auto_func_24() -> int:
+    return 24
+
+
+def auto_func_25() -> int:
+    return 25
+
+
+def auto_func_26() -> int:
+    return 26
+
+
+def auto_func_27() -> int:
+    return 27
+
+
+def auto_func_28() -> int:
+    return 28
+
+
+def auto_func_29() -> int:
+    return 29
+
+
+def auto_func_30() -> int:
+    return 30
+
+
+def auto_func_31() -> int:
+    return 31
+
+
+def auto_func_32() -> int:
+    return 32
+
+
+def auto_func_33() -> int:
+    return 33
+
+
+def auto_func_34() -> int:
+    return 34
+
+
+def auto_func_35() -> int:
+    return 35
+
+
+def auto_func_36() -> int:
+    return 36
+
+
+def auto_func_37() -> int:
+    return 37
+
+
+def auto_func_38() -> int:
+    return 38
+
+
+def auto_func_39() -> int:
+    return 39
+
+
+def auto_func_40() -> int:
+    return 40
+
+
+def auto_func_41() -> int:
+    return 41
+
+
+def auto_func_42() -> int:
+    return 42
+
+
+def auto_func_43() -> int:
+    return 43
+
+
+def auto_func_44() -> int:
+    return 44
+
+
+def auto_func_45() -> int:
+    return 45

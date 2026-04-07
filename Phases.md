@@ -1,295 +1,433 @@
-# CodeReviewEnv — Phased Build Plan
-## For: LLM-Assisted Development
+# GraphReview RL Environment — Complete Phased Build Plan v2
 
 ---
 
-## 🧠 What You Are Building
+## What You Are Building
 
-An OpenEnv-compliant reinforcement learning environment where an LLM agent learns to perform **dependency-aware code review**. 
+An OpenEnv-compliant RL environment where an LLM agent learns to review Python code with full dependency graph awareness. The environment:
 
-The environment parses a Python codebase into a **persistent dependency graph** (nodes = modules, edges = import relationships). Each node stores compressed AST summaries, linter-generated ground truth issues, and agent-written review annotations.
+1. Parses a Python codebase into a **persistent dependency graph** stored in SQLite
+2. Splits large files (>300 lines) into sub-nodes by class/function to keep observations manageable
+3. Pre-computes ground truth linter flags (pylint + bandit + pyflakes) per node at seed time
+4. Presents the agent with one module at a time + compressed AST summaries of neighbors
+5. Receives structured actions (FLAG_BUG, ADD_COMMENT, REQUEST_CONTEXT, etc.)
+6. Scores actions against pre-computed ground truth — no training data needed, ground truth IS the data
+7. Accumulates review annotations back onto graph nodes in SQLite
+8. Outputs an annotated dependency graph visualized via Pyvis (interactive HTML) + markdown report
 
-The agent reviews one module per episode. It receives the **full code of the current module** plus **compressed AST summaries of its neighbors** (never full neighbor code — token budget). It takes multi-step actions (flag bugs, add comments, request context, amend upstream reviews). The environment rewards correct, well-attributed findings and penalizes false positives.
+**The RL loop:** Agent takes multi-step actions per module episode, receives per-step rewards, learns to reason about cascading dependency issues. This is online RL — the environment generates interaction data live. No pre-existing dataset required.
 
-The final output is an **annotated dependency graph** — a machine-readable + human-readable map of the entire codebase with reviews on every module, including cross-module causal attributions.
-
-This is differentiated from tools like CodeRabbit because:
-- It models cascading dependency bugs (bug in B caused by design in A)
-- Reviews are stored back into the graph and can be amended as agent learns more
-- It is an RL training/evaluation environment, not a static analysis tool
-- The agent learns a policy over multi-step decisions, not a single LLM call
-
----
-
-## 🗂️ Persistence Strategy
-
-**Use SQLite via SQLModel** for all persistent state. Do NOT reparse the codebase on every run. The database stores:
-- Parsed module nodes (code, AST summary, linter flags)
-- Graph edges (dependency relationships + reasons)
-- Review annotations (written by agent, updatable)
-- Episode history (for reproducibility)
-- Task definitions and ground truth
-
-On startup: check if DB exists → if yes, load graph from DB → if no, parse codebase and populate DB.
-
-This makes demos fast (parse once, review many times) and makes `reset()` cheap (clear annotations only, keep graph structure).
+**The key differentiator vs CodeRabbit:** Agent sees WHY a decision was made (upstream context) before flagging it. Reviews are stored back into the graph. Agent can AMEND earlier reviews as it learns more about root causes downstream.
 
 ---
 
-## 📁 Target Project Structure
+## Why No Training Data Is Needed
+
+This is online RL, not offline supervised learning:
+- Ground truth = pylint/bandit/pyflakes results, computed once at seed time, stored in DB
+- Agent explores environment → receives rewards → that interaction IS the training signal
+- For Round 1, the baseline inference script evaluates a pre-trained LLM (Gemma 4 E4B) acting as agent
+- You are not training a model — you are building the environment that COULD train one
+- The three graders define what "correct behavior" looks like — that is your data
+
+---
+
+## Tech Stack (Fixed)
+
+- Python 3.11
+- OpenEnv: step() / reset() / state() + Pydantic typed models + openenv.yaml
+- SQLite via SQLAlchemy ORM (persistent, file-based, ships in Docker)
+- NetworkX for graph operations and traversal
+- Python built-in `ast` module for structure extraction
+- `astroid` for scope-aware name resolution and intra-file conflict detection
+- pylint + bandit + pyflakes for ground truth generation (run once at seed time)
+- Pyvis for interactive graph visualization
+- OpenAI client (inference.py + hard task LLM judge)
+- Gemma 4 E4B as baseline agent model
+- FastAPI for HTTP server (required for HF Spaces)
+- Docker + Hugging Face Spaces
+- context7 MCP for library documentation during build
+
+---
+
+## File Structure
 
 ```
-code-review-env/
-├── openenv.yaml
-├── Dockerfile
-├── README.md
-├── inference.py               # Required by spec, root level
-├── requirements.txt
-├── pyproject.toml
-│
-├── env/
-│   ├── __init__.py
-│   ├── environment.py         # Main CodeReviewEnv class
-│   ├── models.py              # Pydantic: Observation, Action, Reward, GraphState
-│   ├── graph.py               # Graph construction, traversal, compression
-│   ├── observation_builder.py # Assembles tiered observation per step
-│   └── reward.py              # Reward computation logic
-│
-├── db/
-│   ├── __init__.py
-│   ├── schema.py              # SQLModel table definitions
-│   ├── store.py               # DB read/write operations
-│   └── migrations.py          # Init and seed scripts
-│
-├── parser/
-│   ├── __init__.py
-│   ├── ast_parser.py          # AST extraction: signatures, imports, classes
-│   ├── linter.py              # Pylint + Bandit runner, stores results to DB
-│   └── summarizer.py          # Converts AST output → compressed node summary
-│
-├── graders/
-│   ├── __init__.py
-│   ├── base_grader.py         # Abstract grader interface
-│   ├── easy_grader.py         # Linter match — fully deterministic
-│   ├── medium_grader.py       # AST + line attribution match
-│   └── hard_grader.py         # LLM-as-judge, temp=0, seed=42, rubric-constrained
-│
-├── tasks/
-│   ├── __init__.py
-│   ├── task_registry.py       # Registers and loads tasks
-│   ├── easy_task.py           # Style/linter issue in isolated module
-│   ├── medium_task.py         # Logic bug with direct dependency context
-│   └── hard_task.py           # Cascading bug across 2+ modules
-│
-├── server/
-│   ├── __init__.py
-│   └── app.py                 # FastAPI server exposing OpenEnv HTTP endpoints
-│
-├── sample_codebase/           # Synthetic test codebase for demo
+graphreview/
+├── sample_project/          # synthetic input codebase with injected bugs
 │   ├── auth.py
 │   ├── checkout.py
 │   ├── cart.py
-│   ├── payments.py
-│   └── config.py
-│
-└── tests/
-    ├── test_parser.py
-    ├── test_graders.py
-    ├── test_environment.py
-    └── test_inference.py
+│   ├── database.py
+│   └── ...
+├── parser/
+│   ├── ast_parser.py        # extract signatures, imports, classes per file
+│   ├── chunker.py           # split files >300 lines into sub-nodes
+│   ├── graph_builder.py     # build NetworkX DiGraph from parsed output
+│   └── summarizer.py        # compress each node to ~50 token summary
+├── db/
+│   ├── database.py          # SQLAlchemy engine, session factory
+│   ├── models.py            # ORM models for all tables
+│   └── seed.py              # parse once → store → skip if seeded
+├── graph/
+│   ├── graph_manager.py     # load graph from DB, traversal, neighbor queries
+│   └── token_budget.py      # enforce token limits on observations
+├── env/
+│   ├── environment.py       # CodeReviewEnv main class
+│   ├── observation.py       # Pydantic: CodeObservation
+│   ├── action.py            # Pydantic: ReviewAction
+│   ├── reward.py            # Pydantic: ReviewReward + reward table
+│   └── state.py             # Pydantic: GraphState
+├── graders/
+│   ├── base_grader.py       # abstract interface
+│   ├── easy_grader.py       # linter match (deterministic)
+│   ├── medium_grader.py     # AST + line attribution (deterministic)
+│   └── hard_grader.py       # graph consistency + LLM judge (temperature=0)
+├── tasks/
+│   ├── task_registry.py     # register 3 tasks
+│   ├── easy_task.py         # style/linter review
+│   ├── medium_task.py       # logic bug + direct dep context
+│   └── hard_task.py         # cascading bug across 2+ module hops
+├── visualizer/
+│   ├── pyvis_renderer.py    # NetworkX → interactive HTML graph
+│   └── report_generator.py  # markdown + JSON final report
+├── server.py                # FastAPI wrapper for OpenEnv HTTP spec
+├── inference.py             # baseline agent script (mandatory, root level)
+├── openenv.yaml             # spec metadata
+├── Dockerfile
+└── README.md
 ```
 
 ---
 
-## 📐 Core Data Models (Design Intent — Implementation Is Your Choice)
+## Database Schema (SQLite — Persistent)
 
-### Graph Node
-Stores everything about one module. Persisted in DB.
-- module_id (filename/path)
-- raw_code (full source)
-- ast_summary (compressed: signatures, classes, exports)
-- linter_flags (pre-computed ground truth from pylint/bandit)
-- dependency_reason (why this module needs its neighbors — extracted from import context)
-- review_annotation (agent-written, nullable, updatable)
-- review_status (pending | in_progress | reviewed)
-- review_summary (one-line, written at episode end)
-
-### Graph Edge
-- source_module_id
-- target_module_id
-- edge_type (explicit_import | implicit_name_resolution)
-- import_line (the actual import statement)
-- weight (1.0 explicit, 0.5 implicit)
-
-### Observation (Pydantic)
-- current_module: full code + full AST summary
-- direct_dependencies: list of compressed node summaries (NOT full code)
-- dependents: list of compressed node summaries
-- existing_reviews: list of one-line review summaries from already-reviewed neighbors
-- constraint_flags: any known forced decisions from upstream
-- step_number: int
-- episode_id: str
-
-### Action (Pydantic, discriminated union)
-- APPROVE
-- FLAG_STYLE(line: int, description: str)
-- FLAG_BUG(line: int, description: str)
-- FLAG_SECURITY(line: int, description: str)
-- FLAG_DEPENDENCY_ISSUE(source_module: str, description: str)
-- ADD_COMMENT(text: str)
-- REQUEST_CHANGES(summary: str)
-- REQUEST_CONTEXT(module_id: str)  ← costs -0.1 reward, returns full code of neighbor
-- AMEND_REVIEW(module_id: str, note: str)  ← retroactively updates neighbor annotation
-
-### Reward (Pydantic)
-- value: float (0.0–1.0)
-- reason: str
-- cumulative: float
-
----
-
-## 🏗️ PHASE 1 — Foundation & Persistence
-**Goal: Database schema, parser, graph construction. No RL yet.**
-
-### Tasks
-1. Define SQLModel schema for all tables (nodes, edges, annotations, episodes, tasks)
-2. Build `ast_parser.py` — extract from any .py file: all function signatures with type hints, all class definitions, all import statements with source resolution, all module-level constants
-3. Build `linter.py` — run pylint and bandit programmatically on a file, parse output into structured list of {line, severity, code, message}. Store results directly to DB as ground truth.
-4. Build `summarizer.py` — convert AST output into a compressed summary string under 100 tokens. Format: "exports: [fn(args)->return, ...] | issues: N | depends_on: [module, ...]"
-5. Build `store.py` — CRUD operations for all tables. Key operations: upsert_node, upsert_edge, get_node_with_neighbors, update_annotation, get_full_graph
-6. Build `graph.py` — on first run: parse all files in target directory → populate DB. On subsequent runs: load from DB. Build NetworkX DiGraph from DB records. Implement traversal order: topological sort weighted by betweenness centrality (leaf modules first, high-centrality modules last).
-7. Build `sample_codebase/` — 5 Python files with known injected issues: one style issue, one logic bug with a direct dependency cause, one security issue, one cascading bug where the root cause is 2 hops away. Document every injected issue in a ground_truth.json file.
-
-### Completion Criteria
-- `python -m parser.ast_parser sample_codebase/` populates DB with all nodes and edges
-- DB persists across runs (second run loads from DB, does not reparse)
-- `python -m db.store` can query a node and return its summary and neighbors
-- ground_truth.json matches linter output for easy/medium tasks
-
----
-
-## 🏗️ PHASE 2 — OpenEnv Core (RL Environment)
-**Goal: Full step()/reset()/state() loop with reward. This is the RL part.**
-
-### Tasks
-1. Build `models.py` — all Pydantic models: Observation, Action (discriminated union), Reward, GraphState, EpisodeRecord. Must be fully typed.
-2. Build `observation_builder.py` — given a module_id and current graph state, assemble the tiered observation: full code for current module, compressed summaries for neighbors (pulled from DB), existing review annotations for already-reviewed neighbors, constraint flags
-3. Build `reward.py` — implement reward logic:
-   - Easy: compare agent flags against linter ground truth. Correct flag = +0.5, false positive = -0.2, missed critical = -0.4
-   - Medium: check flag + line number within ±3 lines of ground truth = +0.5, correct comment attribution = +0.3
-   - Hard: call hard_grader with agent's FLAG_DEPENDENCY_ISSUE and the known root cause. Score returned by judge × 0.8 as reward.
-   - REQUEST_CONTEXT action always costs -0.1 (thinking cost)
-   - AMEND_REVIEW with correct attribution = +0.4 (high reward — this is the key cascading behavior)
-   - Episode completion bonus: +0.2 if all critical issues found, -0.1 if APPROVE on module with known critical bugs
-4. Build `graders/` — implement all three graders per spec above. Hard grader must use OpenAI client (per competition spec), temperature=0, fixed rubric prompt stored as a constant.
-5. Build `environment.py` — main class implementing full OpenEnv interface:
-   - `reset(task_id)` → clears annotations for task modules, returns first observation
-   - `step(action)` → validates action, updates graph annotations in DB, computes reward, returns (obs, reward, done, info)
-   - `state()` → returns full GraphState (serialized NetworkX graph + all annotations)
-   - Episode ends when: agent calls APPROVE or REQUEST_CHANGES, OR step limit reached (max 10 steps)
-6. Build `tasks/` — register 3 tasks pointing to specific modules in sample_codebase with known ground truth issues
-
-### Completion Criteria
-- `env.reset("easy_task")` returns a valid typed Observation
-- `env.step(FLAG_BUG(line=12, description="null risk"))` returns reward > 0 for correct flag
-- `env.state()` returns serializable graph with annotations
-- Full episode runs without error on all 3 tasks
-- Reward values all fall in 0.0–1.0 range
-
----
-
-## 🏗️ PHASE 3 — HTTP Server & OpenEnv Spec Compliance
-**Goal: Wrap environment in FastAPI, pass openenv validate.**
-
-### Tasks
-1. Build `server/app.py` — FastAPI app exposing:
-   - POST /reset → calls env.reset(), returns Observation JSON
-   - POST /step → calls env.step(action), returns (obs, reward, done, info) JSON
-   - GET /state → calls env.state(), returns GraphState JSON
-   - GET /health → returns 200 (required for HF Space ping)
-2. Build `openenv.yaml` — fill all required metadata: name, version, description, tasks list, observation_space, action_space, reward_range
-3. Run `openenv validate` — fix all compliance errors
-4. Confirm all Pydantic models serialize/deserialize correctly over HTTP
-
-### Completion Criteria
-- `openenv validate` passes with no errors
-- All endpoints return correct typed responses
-- GET /health returns 200
-
----
-
-## 🏗️ PHASE 4 — Inference Script
-**Goal: Build inference.py that runs Gemma 4 as the agent. This is what judges auto-run.**
-
-### Critical Requirements (Non-Negotiable)
-- File must be named `inference.py` at root
-- Use OpenAI client for all LLM calls
-- Read API_BASE_URL, MODEL_NAME, HF_TOKEN from environment variables
-- Emit structured stdout logs in EXACTLY this format:
+**modules**
 ```
-[START] task=<task_id> episode=<n>
-[STEP] step=<n> action=<action_type> reward=<float> cumulative=<float>
-[END] task=<task_id> total_reward=<float> steps=<n>
+id                TEXT PK      (relative file path, or "file.py::ClassName" for sub-nodes)
+name              TEXT
+code              TEXT         (full source — full file or chunked section)
+ast_summary       JSON         (signatures, classes, return types, decorators)
+linter_flags      JSON         (pre-computed pylint+bandit+pyflakes — GROUND TRUTH)
+summary           TEXT         (~50 token natural language description)
+parent_module_id  TEXT NULL    (set if this is a sub-node chunk of a larger file)
+review_status     TEXT         (pending | in_progress | reviewed)
+is_chunk          BOOLEAN
 ```
-- Must complete all 3 tasks in under 20 minutes total
-- Must run on 2 vCPU / 8GB RAM
 
-### Tasks
-1. Build the agent loop — for each task: reset env, loop step() until done, collect rewards
-2. Build the LLM action parser — send observation to model with a structured prompt, parse response into typed Action. Use JSON mode or structured output. Handle parse failures gracefully (default to APPROVE with penalty).
-3. Build the action prompt — system prompt explaining the environment, action space, and output format. Include the compressed observation in user message. Tell model to output JSON action only.
-4. Implement all 3 task runs sequentially
-5. Emit all required log lines to stdout
-6. Final output: baseline scores for all 3 tasks printed to stdout
+**edges**
+```
+source_id         TEXT FK → modules.id
+target_id         TEXT FK → modules.id
+edge_type         TEXT         (explicit_import | implicit_dependency | intra_file)
+import_line       TEXT
+dependency_reason TEXT
+scope             TEXT         (module_level | function_level)
+weight            FLOAT        (1.0 explicit, 0.5 implicit)
+```
 
-### Completion Criteria
-- Script runs end to end without error
-- All [START]/[STEP]/[END] logs emitted correctly
-- Produces a score for each task between 0.0–1.0
-- Completes in under 20 minutes
+**review_annotations**
+```
+id                INTEGER PK AUTOINCREMENT
+module_id         TEXT FK → modules.id
+task_id           TEXT
+action_type       TEXT
+content           TEXT
+reward_given      FLOAT
+attributed_to     TEXT NULL    (module_id for cascade attribution)
+is_amendment      BOOLEAN      (true if this amends a prior review)
+created_at        TIMESTAMP
+```
 
----
+**task_runs**
+```
+id                INTEGER PK AUTOINCREMENT
+task_id           TEXT
+started_at        TIMESTAMP
+completed_at      TIMESTAMP NULL
+total_reward      FLOAT
+total_steps       INTEGER
+status            TEXT         (running | complete | failed)
+```
 
-## 🏗️ PHASE 5 — Containerization & Deployment
-**Goal: Docker build works, HF Space deploys, pre-validation script passes.**
-
-### Tasks
-1. Write `Dockerfile`:
-   - Base: python:3.11-slim
-   - Install system deps for pylint, bandit, networkx
-   - Copy project, install requirements
-   - On container start: run parser to populate DB if not exists, then start FastAPI server
-   - Expose port 7860 (HF Spaces default)
-2. Write `README.md` with all required sections: environment description and motivation, observation and action space definitions, all 3 task descriptions with difficulty, setup instructions, baseline scores
-3. Run pre-submission validation script — fix all failures
-4. Deploy to HF Space with `openenv push`
-5. Confirm Space URL returns 200 on GET /health and responds to POST /reset
-
-### Completion Criteria
-- `docker build .` succeeds
-- `docker run -p 7860:7860` starts server cleanly
-- HF Space URL responds to reset()
-- Pre-validation script passes all checks
-
----
-
-## ⏱️ Suggested Time Allocation (Given ~36hrs remaining)
-
-| Phase | Time |
-|---|---|
-| Phase 1 — Foundation | 6 hrs |
-| Phase 2 — RL Environment | 8 hrs |
-| Phase 3 — Server + Spec | 3 hrs |
-| Phase 4 — Inference Script | 4 hrs |
-| Phase 5 — Docker + Deploy | 3 hrs |
-| Buffer / debugging | 4 hrs |
+**seed_meta**
+```
+key               TEXT PK
+value             TEXT
+```
+(stores seeded=true flag, seed timestamp, codebase hash)
 
 ---
 
-## ⚠️ Known Risk Areas (Watch These)
+## Chunking Strategy for Large Files
 
-1. **Hard grader reproducibility** — document judge prompt and seed explicitly
-2. **DB migration on fresh Docker build** — first run must auto-populate DB from sample_codebase
-3. **Inference script runtime** — test full 3-task run locally before submitting, must be under 20 min
-4. **openenv validate strictness** — run it early in Phase 3, not at the end
-5. **Reward always in 0.0–1.0** — clip all reward values, graders must never return outside range
+```
+File ≤ 300 lines  → one node, id = "filename.py"
+
+File > 300 lines  → chunk by top-level class or function
+  Each chunk becomes a sub-node:
+  id = "filename.py::ClassName" or "filename.py::function_name"
+  parent_module_id = "filename.py"
+  
+  A virtual parent node is kept for the file itself
+  with no code but with all inter-file edges
+  
+  Intra-file edges added between chunks:
+  if function_a calls function_b in same file →
+  edge(filename.py::function_a → filename.py::function_b, type=intra_file)
+
+Dependency conflict detection (via astroid):
+  If import is used only inside one function → scope=function_level, weight=0.5
+  If import used at module level → scope=module_level, weight=1.0
+  Circular imports → flagged as edge with type=circular, added to linter_flags
+```
+
+---
+
+## Observation Token Budget
+
+```
+Current module full code:        ~800 tokens  (hard cap, truncate with notice)
+AST summary of current:          ~100 tokens
+Direct dependency summaries:     ~50 tokens × up to 5 deps = 250 tokens
+Dependent summaries:             ~50 tokens × up to 3 = 150 tokens
+Existing neighbor reviews:       ~30 tokens × up to 4 = 120 tokens
+Task description + action space: ~200 tokens
+Buffer:                          ~280 tokens
+─────────────────────────────────────────────
+Total:                           ~1900 tokens (well within E4B 128K window)
+```
+
+If a module has >5 direct dependencies, rank by betweenness centrality and include top 5 only.
+
+---
+
+## Action Space
+
+```python
+action_type options:
+  FLAG_STYLE              # style/formatting issue
+  FLAG_BUG                # logic error
+  FLAG_SECURITY           # security vulnerability
+  FLAG_DEPENDENCY_ISSUE   # issue caused by upstream module
+  ADD_COMMENT             # explanation (requires content field)
+  REQUEST_CONTEXT         # fetch full code of a neighbor (-0.1 reward cost)
+  REQUEST_CHANGES         # end episode, verdict = changes needed
+  APPROVE                 # end episode, verdict = approved
+  AMEND_REVIEW            # update a prior annotation on a neighbor node
+
+Fields:
+  action_type:     required
+  target_line:     optional int
+  content:         required for ADD_COMMENT, AMEND_REVIEW
+  attributed_to:   optional module_id (for FLAG_DEPENDENCY_ISSUE, AMEND_REVIEW)
+  context_request: required for REQUEST_CONTEXT (module_id to fetch)
+```
+
+---
+
+## Reward Table
+
+```
+Correct FLAG_* matching linter ground truth:          +0.5
+Accurate ADD_COMMENT (keyword match to linter desc):  +0.3
+FLAG_DEPENDENCY_ISSUE with correct attribution:       +0.6
+FLAG_DEPENDENCY_ISSUE wrong attribution:              +0.1
+AMEND_REVIEW correctly updating prior annotation:     +0.4
+REQUEST_CONTEXT (investigation cost):                 -0.1
+False positive flag (no linter match):                -0.2
+APPROVE on module with unflagged critical issues:     -1.0
+REQUEST_CHANGES on clean module:                      -0.3
+Episode completion bonus (all issues caught):         +0.2
+```
+
+---
+
+## Grader Architecture
+
+### Easy Grader (fully deterministic)
+- Load linter_flags JSON from DB for current module
+- For each agent FLAG_* action: check if a matching linter flag exists (type + line ±3)
+- Score per action, aggregate for episode
+- No LLM call. Zero variance.
+
+### Medium Grader (fully deterministic)
+- Easy grader logic PLUS:
+- For ADD_COMMENT: extract keywords from linter flag description, check overlap with agent comment (Jaccard similarity > 0.3 = match)
+- For line attribution: ±3 line tolerance
+- Still no LLM call.
+
+### Hard Grader (quasi-deterministic)
+- Graph consistency check (deterministic):
+  If FLAG_DEPENDENCY_ISSUE with attributed_to=X: verify edge(current → X) or edge(X → current) exists in graph
+  If no edge: reward = 0.0, feedback = "no dependency relationship found"
+- LLM-as-judge (temperature=0, fixed rubric):
+  Separate API call to judge model (NOT the agent)
+  Fixed system prompt with scoring rubric
+  Scores cascade reasoning quality: 0.0 | 0.5 | 1.0
+  Document prompt hash in README for reproducibility
+
+---
+
+## Three Tasks
+
+### Task 1: style_review (Easy)
+- Input: single module with 3 pylint style violations
+- Agent must: flag all 3 style issues
+- No dependency context needed
+- Grader: easy_grader only
+- Expected baseline score: 0.7–0.9
+
+### Task 2: logic_review (Medium)  
+- Input: checkout.py with a null-reference bug
+- auth.py (its dependency) has validate_token that can return None
+- Agent must: flag the bug + add comment referencing the None return risk
+- Grader: medium_grader
+- Expected baseline score: 0.4–0.7
+
+### Task 3: cascade_review (Hard)
+- Input: 3-module chain: config.py → auth.py → checkout.py
+- Bug originates in config.py (missing key), propagates through auth.py, surfaces in checkout.py
+- Agent must: flag issue in checkout.py AND attribute root cause to config.py
+- Grader: hard_grader (graph consistency + LLM judge)
+- Expected baseline score: 0.2–0.5
+
+---
+
+## Visualization
+
+### Pyvis Interactive Graph (primary)
+- Nodes colored by review_status: grey=pending, yellow=in_progress, green=approved, red=changes_requested
+- Node size = number of dependents (centrality)
+- Edge color: blue=explicit_import, orange=implicit, red=circular
+- Edge thickness = weight (1.0 explicit, 0.5 implicit)
+- Click node → shows review_annotations panel
+- Rendered as standalone HTML, embedded in HF Space
+
+### Final Report Output (end of all episodes)
+- `graphreview_report.md`: per-module sections with verdict + issues + cascade attributions
+- `graphreview_report.json`: machine-readable full graph + annotations
+- `graphreview_graph.html`: pyvis interactive visualization
+
+---
+
+## inference.py Log Format (Mandatory)
+
+```
+[START] task=cascade_review module_count=3
+[STEP] module=checkout.py action=FLAG_BUG line=24 reward=0.5 cumulative=0.5
+[STEP] module=checkout.py action=ADD_COMMENT content="null risk from auth" reward=0.3 cumulative=0.8
+[STEP] module=checkout.py action=FLAG_DEPENDENCY_ISSUE attributed_to=auth.py reward=0.6 cumulative=1.4
+[STEP] module=checkout.py action=REQUEST_CHANGES reward=0.2 cumulative=1.6 done=true
+[STEP] module=auth.py action=FLAG_BUG line=15 reward=0.5 cumulative=2.1
+[STEP] module=auth.py action=FLAG_DEPENDENCY_ISSUE attributed_to=config.py reward=0.6 cumulative=2.7
+[STEP] module=auth.py action=REQUEST_CHANGES reward=0.2 cumulative=2.9 done=true
+[STEP] module=config.py action=FLAG_BUG line=8 reward=0.5 cumulative=3.4
+[STEP] module=config.py action=REQUEST_CHANGES reward=0.2 cumulative=3.6 done=true
+[END] task=cascade_review total_reward=3.6 modules_reviewed=3 report=graphreview_report.md
+```
+
+---
+
+## Phase 1 — Persistence Layer & Sample Project
+**Goal: Parse once, store forever, never re-parse**
+
+Build:
+- `sample_project/` — 10 Python files, ~50 functions total, with injected known bugs for each task
+- `db/models.py` — all SQLAlchemy ORM models
+- `db/database.py` — engine setup, session factory, init_db()
+- `db/seed.py` — orchestrate full parse → lint → store pipeline
+- `parser/ast_parser.py` — extract structure per file using Python ast
+- `parser/chunker.py` — split files >300 lines by class/function into sub-nodes
+- `parser/graph_builder.py` — build NetworkX DiGraph, explicit + implicit edges
+- `parser/summarizer.py` — ~50 token summaries per node
+
+Success criteria:
+- seed.py completes in <30s on sample_project
+- Second run detects seeded flag, loads in <1s
+- All modules, edges, linter_flags correctly stored
+- Chunking correctly splits a 400-line test file into sub-nodes
+
+---
+
+## Phase 2 — Graph Manager & Observation Builder
+**Goal: Efficient, token-budgeted observations from DB**
+
+Build:
+- `graph/graph_manager.py` — load graph, traversal order, neighbor queries
+- `graph/token_budget.py` — enforce per-component token limits
+- `env/observation.py` — Pydantic CodeObservation model
+
+Success criteria:
+- Observation for any node fits within 2000 token budget
+- Traversal order: leaf nodes first, high-centrality nodes last
+- REQUEST_CONTEXT returns full neighbor code within budget
+
+---
+
+## Phase 3 — Action Space, Reward Engine & Graders
+**Goal: All actions scored correctly and deterministically**
+
+Build:
+- `env/action.py` — Pydantic ReviewAction
+- `env/reward.py` — Pydantic ReviewReward + reward table logic
+- `graders/base_grader.py` — abstract interface
+- `graders/easy_grader.py` — linter match
+- `graders/medium_grader.py` — linter + keyword + line attribution
+- `graders/hard_grader.py` — graph consistency + LLM judge
+
+Success criteria:
+- Easy grader: same input always gives same output (verified with 10 runs)
+- Hard grader: temperature=0 verified, prompt hash documented
+- All reward values within 0.0–1.0 range
+- False positive and false negative cases handled explicitly
+
+---
+
+## Phase 4 — OpenEnv Core
+**Goal: Fully compliant step() / reset() / state()**
+
+Build:
+- `env/environment.py` — CodeReviewEnv main class
+- `env/state.py` — GraphState Pydantic model
+- `tasks/task_registry.py` + 3 task files
+- `openenv.yaml`
+- `server.py` — FastAPI HTTP wrapper
+
+Success criteria:
+- `openenv validate` passes
+- All 3 tasks run end-to-end without error
+- state() correctly returns full annotated graph
+- reset() clears only current task annotations, not full DB
+
+---
+
+## Phase 5 — Visualization & Reporting
+**Goal: Useful output the user actually sees**
+
+Build:
+- `visualizer/pyvis_renderer.py` — interactive HTML graph
+- `visualizer/report_generator.py` — markdown + JSON report
+
+Success criteria:
+- Graph colors update correctly as reviews accumulate
+- Report correctly attributes cascade issues across modules
+- HTML renders in browser without external dependencies
+
+---
+
+## Phase 6 — inference.py & Deployment
+**Goal: Baseline script + Docker + HF Space**
+
+Build:
+- `inference.py` — runs Gemma 4 E4B against all 3 tasks, emits mandatory log format
+- `Dockerfile` — clean build + run
+- `README.md` — full documentation
+- HF Space deployment
+
+Success criteria:
+- inference.py completes all 3 tasks in <20 minutes
+- Runs on 2 vCPU / 8GB RAM
+- docker build && docker run works cleanly
+- HF Space deploys and responds to reset() ping
+- Baseline scores reproducible across 3 runs

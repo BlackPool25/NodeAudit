@@ -9,7 +9,9 @@ from sqlmodel import Field, SQLModel
 
 class EdgeType(StrEnum):
     EXPLICIT_IMPORT = "explicit_import"
-    IMPLICIT_NAME_RESOLUTION = "implicit_name_resolution"
+    IMPLICIT_DEPENDENCY = "implicit_dependency"
+    INTRA_FILE = "intra_file"
+    CIRCULAR = "circular"
 
 
 class ReviewStatus(StrEnum):
@@ -28,8 +30,13 @@ class ModuleNode(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     source_root: str = Field(index=True)
     module_id: str = Field(index=True)
+    name: Optional[str] = None
     raw_code: str
     ast_summary: str
+    summary: Optional[str] = None
+    linter_flags: str = "[]"
+    parent_module_id: Optional[str] = Field(default=None, index=True)
+    is_chunk: bool = False
     dependency_reason: str = ""
     review_annotation: Optional[str] = None
     review_status: ReviewStatus = Field(default=ReviewStatus.PENDING)
@@ -89,3 +96,8 @@ class TaskDefinition(SQLModel, table=True):
     target_module_id: str = Field(index=True)
     description: str
     ground_truth_ref: str
+
+
+class SeedMeta(SQLModel, table=True):
+    key: str = Field(primary_key=True)
+    value: str

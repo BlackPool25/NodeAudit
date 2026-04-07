@@ -17,6 +17,7 @@ from db.schema import (
     ModuleNode,
     ReviewAnnotation,
     ReviewStatus,
+    SeedMeta,
     Severity,
 )
 
@@ -77,6 +78,11 @@ class Store:
         raw_code: str,
         ast_summary: str,
         dependency_reason: str,
+        name: str | None = None,
+        summary: str | None = None,
+        linter_flags: str = "[]",
+        parent_module_id: str | None = None,
+        is_chunk: bool = False,
     ) -> ModuleNode:
         with Session(self.engine) as session:
             existing = session.exec(
@@ -86,8 +92,13 @@ class Store:
                 )
             ).first()
             if existing:
+                existing.name = name or existing.name
                 existing.raw_code = raw_code
                 existing.ast_summary = ast_summary
+                existing.summary = summary or existing.summary
+                existing.linter_flags = linter_flags
+                existing.parent_module_id = parent_module_id
+                existing.is_chunk = is_chunk
                 existing.dependency_reason = dependency_reason
                 existing.updated_at = datetime.now(UTC)
                 session.add(existing)
@@ -98,8 +109,13 @@ class Store:
             node = ModuleNode(
                 source_root=self.config.source_root,
                 module_id=module_id,
+                name=name,
                 raw_code=raw_code,
                 ast_summary=ast_summary,
+                summary=summary,
+                linter_flags=linter_flags,
+                parent_module_id=parent_module_id,
+                is_chunk=is_chunk,
                 dependency_reason=dependency_reason,
             )
             session.add(node)
@@ -321,6 +337,21 @@ class Store:
                 select(ModuleNode.id).where(ModuleNode.source_root == self.config.source_root)
             ).first()
             return first_node is not None
+
+    def get_meta(self, key: str) -> Optional[str]:
+        with Session(self.engine) as session:
+            record = session.get(SeedMeta, key)
+            return record.value if record else None
+
+    def set_meta(self, key: str, value: str) -> None:
+        with Session(self.engine) as session:
+            record = session.get(SeedMeta, key)
+            if record:
+                record.value = value
+                session.add(record)
+            else:
+                session.add(SeedMeta(key=key, value=value))
+            session.commit()
 
     def clear_source_graph(self) -> None:
         with Session(self.engine) as session:
