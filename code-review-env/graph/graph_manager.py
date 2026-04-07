@@ -16,8 +16,13 @@ class GraphManager:
     def __init__(self, source_root: str | Path, db_path: str | Path | None = None) -> None:
         self.source_root = str(Path(source_root).resolve())
         self.store = Store(source_root=self.source_root, db_path=db_path)
+        self._graph_cache: nx.DiGraph | None = None
+        self._centrality_cache: dict[str, float] | None = None
 
-    def load_graph(self) -> nx.DiGraph:
+    def load_graph(self, refresh: bool = False) -> nx.DiGraph:
+        if self._graph_cache is not None and not refresh:
+            return self._graph_cache.copy()
+
         graph = nx.DiGraph()
         with Session(self.store.engine) as session:
             nodes = list(
@@ -54,7 +59,13 @@ class GraphManager:
                 weight=edge.weight,
             )
 
-        return graph
+        self._graph_cache = graph
+        self._centrality_cache = None
+        return graph.copy()
+
+    def invalidate_cache(self) -> None:
+        self._graph_cache = None
+        self._centrality_cache = None
 
     def get_node(self, module_id: str) -> dict[str, object]:
         graph = self.load_graph()
@@ -86,10 +97,16 @@ class GraphManager:
         return ordered[: max(limit, 0)]
 
     def centrality(self) -> dict[str, float]:
+        if self._centrality_cache is not None:
+            return dict(self._centrality_cache)
+
         graph = self.load_graph()
         if graph.number_of_nodes() == 0:
+            self._centrality_cache = {}
             return {}
-        return nx.betweenness_centrality(graph, normalized=True)
+
+        self._centrality_cache = nx.betweenness_centrality(graph, normalized=True)
+        return dict(self._centrality_cache)
 
     def traversal_order(self) -> list[str]:
         """

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 from pathlib import Path
 import sys
@@ -32,6 +34,10 @@ _BANDIT_SEVERITY_MAP = {
 }
 
 
+def _timeout_seconds() -> int:
+    return int(os.getenv("GRAPHREVIEW_LINTER_TIMEOUT_SECONDS", "20"))
+
+
 def run_pylint(path: Path) -> list[LinterIssue]:
     cmd = [
         sys.executable,
@@ -42,7 +48,16 @@ def run_pylint(path: Path) -> list[LinterIssue]:
         "--score=n",
         "--reports=n",
     ]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        return []
 
     payload = (proc.stdout or "").strip()
     if not payload:
@@ -71,7 +86,16 @@ def run_pylint(path: Path) -> list[LinterIssue]:
 
 def run_bandit(path: Path) -> list[LinterIssue]:
     cmd = [sys.executable, "-m", "bandit", "-q", "-f", "json", str(path)]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        return []
 
     payload = (proc.stdout or "").strip()
     if not payload:
@@ -100,7 +124,16 @@ def run_bandit(path: Path) -> list[LinterIssue]:
 
 def run_pyflakes(path: Path) -> list[LinterIssue]:
     cmd = [sys.executable, "-m", "pyflakes", str(path)]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=_timeout_seconds(),
+        )
+    except subprocess.TimeoutExpired:
+        return []
     payload = (proc.stdout or "").strip()
     if not payload:
         return []
@@ -127,7 +160,13 @@ def run_pyflakes(path: Path) -> list[LinterIssue]:
 
 
 def run_linters(path: Path) -> list[LinterIssue]:
-    issues = run_pylint(path)
-    issues.extend(run_bandit(path))
-    issues.extend(run_pyflakes(path))
-    return issues
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        py_future = pool.submit(run_pylint, path)
+        ba_future = pool.submit(run_bandit, path)
+        fl_future = pool.submit(run_pyflakes, path)
+
+        issues = py_future.result()
+        issues.extend(ba_future.result())
+        issues.extend(fl_future.result())
+
+    return sorted(issues, key=lambda item: (item.line, item.tool, item.code, item.message))

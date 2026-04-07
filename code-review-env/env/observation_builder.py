@@ -127,13 +127,25 @@ class ObservationBuilder:
 				was_truncated=str(context_trimmed) != requested_context_code,
 			)
 
+		dependency_summaries_bounded = self._trim_neighbor_summaries(
+			dependency_summaries,
+			str(budgeted.payload.get("dependency_summaries_text", "")),
+		)
+		dependent_summaries_bounded = self._trim_neighbor_summaries(
+			dependent_summaries,
+			str(budgeted.payload.get("dependent_summaries_text", "")),
+		)
+		neighbor_reviews_bounded = [
+			line for line in str(budgeted.payload.get("neighbor_reviews_text", "")).splitlines() if line.strip()
+		]
+
 		return CodeObservation(
 			module_id=module_id,
 			code=str(budgeted.payload.get("code", "")),
 			ast_summary=self._ast_summary_payload(str(budgeted.payload.get("ast_summary_text", ""))),
-			dependency_summaries=dependency_summaries,
-			dependent_summaries=dependent_summaries,
-			neighbor_reviews=neighbor_reviews[:4],
+			dependency_summaries=dependency_summaries_bounded,
+			dependent_summaries=dependent_summaries_bounded,
+			neighbor_reviews=neighbor_reviews_bounded,
 			task_description=task_description,
 			available_actions=actions,
 			requested_context=requested_context,
@@ -141,3 +153,23 @@ class ObservationBuilder:
 			total_tokens=budgeted.total_tokens,
 			within_budget=budgeted.total_tokens <= self.token_budget.max_total_tokens,
 		)
+
+	@staticmethod
+	def _trim_neighbor_summaries(
+		summaries: list[NeighborSummary],
+		serialized_text: str,
+	) -> list[NeighborSummary]:
+		if not summaries or not serialized_text.strip():
+			return []
+
+		max_count = serialized_text.count("\n") + 1
+		bounded = summaries[:max_count]
+		if "[TRUNCATED]" in serialized_text and bounded:
+			last = bounded[-1]
+			bounded[-1] = NeighborSummary(
+				module_id=last.module_id,
+				relation=last.relation,
+				summary=f"{last.summary}\n... [TRUNCATED]",
+				review_snippet=last.review_snippet,
+			)
+		return bounded

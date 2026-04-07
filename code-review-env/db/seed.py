@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -14,9 +16,44 @@ from parser.linter import run_linters
 from parser.summarizer import summarize_module
 
 
+_SKIP_DIRS = {
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".venv",
+    "venv",
+    "node_modules",
+    "dist",
+    "build",
+}
+
+
+def _progress_enabled() -> bool:
+    return os.getenv("GRAPHREVIEW_PROGRESS", "true").lower() == "true"
+
+
+def _seed_workers() -> int:
+    default_workers = min(4, os.cpu_count() or 1)
+    configured = int(os.getenv("GRAPHREVIEW_SEED_WORKERS", str(default_workers)))
+    return max(1, configured)
+
+
+def _iter_python_files(target_dir: Path) -> list[Path]:
+    max_files = int(os.getenv("GRAPHREVIEW_MAX_FILES", "5000"))
+    py_files: list[Path] = []
+    for path in sorted(target_dir.rglob("*.py")):
+        if any(part in _SKIP_DIRS for part in path.parts):
+            continue
+        py_files.append(path)
+        if len(py_files) >= max_files:
+            break
+    return py_files
+
+
 def _codebase_hash(target_dir: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted(target_dir.rglob("*.py")):
+    for path in _iter_python_files(target_dir):
         rel = path.relative_to(target_dir).as_posix()
         digest.update(rel.encode("utf-8"))
         digest.update(path.read_bytes())
@@ -25,6 +62,14 @@ def _codebase_hash(target_dir: Path) -> str:
 
 def _seed_meta_key(source_root: str) -> str:
     return f"seeded:{source_root}"
+
+
+def _analyze_file(path: Path, target_dir: Path) -> tuple[Path, object, list[object], str, object]:
+    parsed = parse_python_file(path, target_dir)
+    issues = run_linters(path)
+    summary = summarize_module(parsed, issues)
+    chunk_result = chunk_module(parsed, max_lines=300)
+    return path, parsed, issues, summary, chunk_result
 
 
 def seed_project(target_dir: Path, db_path: str | None = None, force: bool = False) -> dict[str, object]:
@@ -52,19 +97,37 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
 
     store.clear_source_graph()
 
-    py_files = sorted(target_dir.rglob("*.py"))
-    parsed_modules = [parse_python_file(path, target_dir) for path in py_files]
+    py_files = _iter_python_files(target_dir)
+    total_files = len(py_files)
+    analysis_by_path: dict[Path, tuple[object, list[object], str, object]] = {}
+    workers = _seed_workers()
+
+    if _progress_enabled():
+        print(f"[SEED] Analyzing {total_files} files with {workers} workers...", flush=True)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(_analyze_file, path, target_dir) for path in py_files]
+        for idx, future in enumerate(as_completed(futures), start=1):
+            path, parsed, issues, summary, chunk_result = future.result()
+            analysis_by_path[path] = (parsed, issues, summary, chunk_result)
+            if _progress_enabled():
+                rel = path.relative_to(target_dir).as_posix()
+                print(f"[SEED] analyzed {idx}/{total_files}: {rel}", flush=True)
+
+    parsed_modules = [analysis_by_path[path][0] for path in py_files]
     module_ids = {parsed.module_id for parsed in parsed_modules}
 
     chunk_ids_by_parent: dict[str, set[str]] = {}
 
-    for path, parsed in zip(py_files, parsed_modules):
-        issues = run_linters(path)
-        summary = summarize_module(parsed, issues)
+    for idx, path in enumerate(py_files, start=1):
+        parsed, issues, summary, chunk_result = analysis_by_path[path]
         linter_flags = json.dumps([issue.model_dump() for issue in issues])
-
-        chunk_result = chunk_module(parsed, max_lines=300)
         parent = chunk_result.parent
+
+        if _progress_enabled():
+            rel = path.relative_to(target_dir).as_posix()
+            print(f"[SEED] storing {idx}/{total_files}: {rel}", flush=True)
+
         store.upsert_node(
             module_id=parent.module_id,
             name=parent.name,

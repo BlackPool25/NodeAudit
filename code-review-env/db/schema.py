@@ -71,9 +71,13 @@ class ReviewAnnotation(SQLModel, table=True):
     source_root: str = Field(index=True)
     module_id: str = Field(index=True)
     episode_id: str = Field(index=True)
+    task_id: Optional[str] = Field(default=None, index=True)
     step_number: int
     action_type: str
     note: str
+    reward_given: float = 0.0
+    attributed_to: Optional[str] = Field(default=None, index=True)
+    is_amendment: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

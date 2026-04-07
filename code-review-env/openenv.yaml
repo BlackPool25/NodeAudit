@@ -1,3 +1,29 @@
-name: code-review-env
-version: 0.1.0
-description: Phase 1 scaffold
+name: graphreview
+version: 0.4.0
+description: Dependency-aware RL code review environment with persistent graph state
+runtime:
+	api:
+		reset: POST /reset
+		step: POST /step
+		state: GET /state
+	health: GET /health
+	debug:
+		state: GET /debug/state
+		reset_annotations: POST /debug/reset-annotations
+tasks:
+	- id: style_review
+		level: easy
+		module_defaults: [cart]
+		grader: easy
+	- id: logic_review
+		level: medium
+		module_defaults: [checkout, auth]
+		grader: medium
+	- id: cascade_review
+		level: hard
+		module_defaults: [checkout, auth, config]
+		grader: hard
+models:
+	action: env.action.ReviewAction
+	observation: env.observation.CodeObservation
+	state: env.state.GraphState

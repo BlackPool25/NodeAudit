@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import os
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -10,6 +11,31 @@ from db.schema import EdgeType
 from db.store import Store
 from parser.linter import run_linters
 from parser.summarizer import summarize_module
+
+
+_SKIP_DIRS = {
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".venv",
+    "venv",
+    "node_modules",
+    "dist",
+    "build",
+}
+
+
+def _iter_python_files(target_dir: Path) -> list[Path]:
+    max_files = int(os.getenv("GRAPHREVIEW_MAX_FILES", "5000"))
+    py_files: list[Path] = []
+    for path in sorted(target_dir.rglob("*.py")):
+        if any(part in _SKIP_DIRS for part in path.parts):
+            continue
+        py_files.append(path)
+        if len(py_files) >= max_files:
+            break
+    return py_files
 
 
 class ImportRef(BaseModel):
@@ -165,7 +191,7 @@ def parse_directory(target_dir: Path, db_path: str | None = None) -> Store:
     store = Store(source_root=str(target_dir), db_path=db_path)
     store.clear_source_graph()
 
-    py_files = sorted(target_dir.rglob("*.py"))
+    py_files = _iter_python_files(target_dir)
     parsed_modules = [parse_python_file(py_file, target_dir) for py_file in py_files]
     known_module_ids = {parsed.module_id for parsed in parsed_modules}
 

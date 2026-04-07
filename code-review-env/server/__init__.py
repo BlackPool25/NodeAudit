@@ -1,1 +1,3 @@
-"""Server package placeholder for later phases."""
+from server.app import app
+
+__all__ = ["app"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -12,6 +13,7 @@ from sqlmodel import Session, delete, select
 from db.migrations import get_default_db_path, get_engine, init_db
 from db.schema import (
     EdgeType,
+    EpisodeRecord,
     LinterFinding,
     ModuleEdge,
     ModuleNode,
@@ -65,8 +67,9 @@ class Store:
             source_root=str(Path(source_root).resolve()),
             db_path=Path(db_path) if db_path else get_default_db_path(),
         )
-        init_db(db_path=self.config.db_path)
-        self.engine = get_engine(self.config.db_path)
+        db_echo = os.getenv("GRAPHREVIEW_DB_ECHO", "false").lower() == "true"
+        init_db(db_path=self.config.db_path, echo=db_echo)
+        self.engine = get_engine(self.config.db_path, echo=db_echo)
 
     def session(self) -> Iterator[Session]:
         with Session(self.engine) as session:
@@ -265,6 +268,10 @@ class Store:
         step_number: int,
         action_type: str,
         note: str,
+        task_id: str | None = None,
+        reward_given: float = 0.0,
+        attributed_to: str | None = None,
+        is_amendment: bool = False,
         review_summary: str | None = None,
         review_status: ReviewStatus | None = None,
     ) -> None:
@@ -291,9 +298,13 @@ class Store:
                     source_root=self.config.source_root,
                     module_id=module_id,
                     episode_id=episode_id,
+                    task_id=task_id,
                     step_number=step_number,
                     action_type=action_type,
                     note=note,
+                    reward_given=reward_given,
+                    attributed_to=attributed_to,
+                    is_amendment=is_amendment,
                 )
             )
             session.commit()
@@ -330,6 +341,100 @@ class Store:
                 for edge in edges
             ],
         )
+
+    def create_episode_record(self, episode_id: str, task_id: str, module_id: str) -> EpisodeRecord:
+        with Session(self.engine) as session:
+            record = EpisodeRecord(
+                source_root=self.config.source_root,
+                episode_id=episode_id,
+                task_id=task_id,
+                module_id=module_id,
+                total_steps=0,
+                cumulative_reward=0.0,
+            )
+            session.add(record)
+            session.commit()
+            session.refresh(record)
+            return record
+
+    def update_episode_record(
+        self,
+        episode_id: str,
+        module_id: str,
+        total_steps: int,
+        cumulative_reward: float,
+    ) -> None:
+        with Session(self.engine) as session:
+            record = session.exec(
+                select(EpisodeRecord).where(
+                    EpisodeRecord.source_root == self.config.source_root,
+                    EpisodeRecord.episode_id == episode_id,
+                    EpisodeRecord.module_id == module_id,
+                )
+            ).first()
+            if not record:
+                return
+            record.total_steps = total_steps
+            record.cumulative_reward = cumulative_reward
+            session.add(record)
+            session.commit()
+
+    def get_episode_records(self, episode_id: str) -> list[EpisodeRecord]:
+        with Session(self.engine) as session:
+            return list(
+                session.exec(
+                    select(EpisodeRecord).where(
+                        EpisodeRecord.source_root == self.config.source_root,
+                        EpisodeRecord.episode_id == episode_id,
+                    )
+                ).all()
+            )
+
+    def get_review_annotations(self, episode_id: str | None = None) -> list[ReviewAnnotation]:
+        with Session(self.engine) as session:
+            query = select(ReviewAnnotation).where(
+                ReviewAnnotation.source_root == self.config.source_root
+            )
+            if episode_id is not None:
+                query = query.where(ReviewAnnotation.episode_id == episode_id)
+            return list(session.exec(query).all())
+
+    def clear_annotations_for_episode(self, episode_id: str) -> int:
+        with Session(self.engine) as session:
+            touched = list(
+                session.exec(
+                    select(ReviewAnnotation.module_id).where(
+                        ReviewAnnotation.source_root == self.config.source_root,
+                        ReviewAnnotation.episode_id == episode_id,
+                    )
+                ).all()
+            )
+            session.exec(
+                delete(ReviewAnnotation).where(
+                    ReviewAnnotation.source_root == self.config.source_root,
+                    ReviewAnnotation.episode_id == episode_id,
+                )
+            )
+
+            unique_touched = sorted(set(str(module_id) for module_id in touched))
+            if unique_touched:
+                nodes = list(
+                    session.exec(
+                        select(ModuleNode).where(
+                            ModuleNode.source_root == self.config.source_root,
+                            ModuleNode.module_id.in_(unique_touched),
+                        )
+                    ).all()
+                )
+                for node in nodes:
+                    node.review_annotation = None
+                    node.review_summary = None
+                    node.review_status = ReviewStatus.PENDING
+                    node.updated_at = datetime.now(UTC)
+                    session.add(node)
+
+            session.commit()
+            return len(unique_touched)
 
     def has_nodes(self) -> bool:
         with Session(self.engine) as session:

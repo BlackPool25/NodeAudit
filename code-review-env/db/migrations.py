@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from sqlmodel import SQLModel, create_engine
+from sqlalchemy import inspect, text
 
 
 def get_default_db_path() -> Path:
@@ -11,9 +13,27 @@ def get_default_db_path() -> Path:
 
 
 def get_engine(db_path: str | Path | None = None, echo: bool = False):
+    env_url = os.getenv("GRAPHREVIEW_DATABASE_URL", "").strip()
+    if env_url:
+        connect_args: dict[str, object] = {}
+        if env_url.startswith("sqlite://"):
+            connect_args["check_same_thread"] = False
+        return create_engine(env_url, echo=echo, connect_args=connect_args)
+
+    # Turso remote URL path (libSQL over SQLAlchemy dialect).
+    turso_url = os.getenv("TURSO_DATABASE_URL", "").strip()
+    turso_token = os.getenv("TURSO_AUTH_TOKEN", "").strip()
+    if turso_url:
+        # Example TURSO_DATABASE_URL: libsql://my-db.turso.io
+        engine_url = f"sqlite+{turso_url}?secure=true"
+        connect_args: dict[str, object] = {}
+        if turso_token:
+            connect_args["auth_token"] = turso_token
+        return create_engine(engine_url, echo=echo, connect_args=connect_args)
+
     path = Path(db_path) if db_path else get_default_db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    return create_engine(f"sqlite:///{path}", echo=echo)
+    return create_engine(f"sqlite:///{path}", echo=echo, connect_args={"check_same_thread": False})
 
 
 def init_db(db_path: str | Path | None = None, echo: bool = False) -> None:
@@ -21,6 +41,31 @@ def init_db(db_path: str | Path | None = None, echo: bool = False) -> None:
 
     engine = get_engine(db_path=db_path, echo=echo)
     SQLModel.metadata.create_all(engine)
+    _apply_lightweight_migrations(engine)
+
+
+def _apply_lightweight_migrations(engine) -> None:
+    inspector = inspect(engine)
+    if "reviewannotation" not in inspector.get_table_names():
+        return
+
+    existing_columns = {col["name"] for col in inspector.get_columns("reviewannotation")}
+    add_statements: list[str] = []
+    if "task_id" not in existing_columns:
+        add_statements.append("ALTER TABLE reviewannotation ADD COLUMN task_id TEXT")
+    if "reward_given" not in existing_columns:
+        add_statements.append("ALTER TABLE reviewannotation ADD COLUMN reward_given FLOAT DEFAULT 0.0")
+    if "attributed_to" not in existing_columns:
+        add_statements.append("ALTER TABLE reviewannotation ADD COLUMN attributed_to TEXT")
+    if "is_amendment" not in existing_columns:
+        add_statements.append("ALTER TABLE reviewannotation ADD COLUMN is_amendment BOOLEAN DEFAULT 0")
+
+    if not add_statements:
+        return
+
+    with engine.begin() as conn:
+        for stmt in add_statements:
+            conn.execute(text(stmt))
 
 
 if __name__ == "__main__":
