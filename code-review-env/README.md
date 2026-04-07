@@ -70,6 +70,8 @@ Turso/libSQL fallback configuration:
 
 - `TURSO_DATABASE_URL` (example: `libsql://your-db.turso.io`)
 - `TURSO_AUTH_TOKEN`
+- `GRAPHREVIEW_REMOTE_SQLITE_URL` (alias of `TURSO_DATABASE_URL`)
+- `GRAPHREVIEW_REMOTE_SQLITE_AUTH_TOKEN` (alias of `TURSO_AUTH_TOKEN`)
 
 When `GRAPHREVIEW_DATABASE_URL` is not set and `TURSO_DATABASE_URL` is set, engine is built as:
 
@@ -84,7 +86,11 @@ Judge settings:
 - `GRAPHREVIEW_JUDGE_MODEL` (default `gemma4:e4b`)
 - `GRAPHREVIEW_JUDGE_BASE_URL` (default `http://localhost:11434/v1`)
 - `GRAPHREVIEW_JUDGE_API_KEY` (default `ollama`)
-- `GRAPHREVIEW_JUDGE_TIMEOUT_SECONDS` (default `30`)
+- `GRAPHREVIEW_JUDGE_TIMEOUT_SECONDS` (default `8`)
+- `GRAPHREVIEW_JUDGE_ENABLED` (`true|false`, default `true`)
+- `GRAPHREVIEW_JUDGE_MAX_CALLS` (default `200`)
+- `GRAPHREVIEW_JUDGE_MAX_CONSECUTIVE_FAILURES` (default `3`)
+- `GRAPHREVIEW_JUDGE_THINK` (`false|true|low|medium|high`, default `false`)
 
 General runtime settings:
 

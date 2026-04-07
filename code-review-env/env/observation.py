@@ -29,6 +29,7 @@ class CodeObservation(BaseModel):
 
     module_id: str
     code: str
+    module_summary: str = ""
     ast_summary: dict[str, object]
     dependency_summaries: list[NeighborSummary] = Field(default_factory=list)
     dependent_summaries: list[NeighborSummary] = Field(default_factory=list)

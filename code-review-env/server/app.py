@@ -46,6 +46,8 @@ class TaskRunResponse(BaseModel):
 	episode_id: str
 	total_steps: int
 	total_reward: float
+	modules_total: int
+	modules_completed: int
 	done: bool
 
 
@@ -168,13 +170,25 @@ def run_task(task_id: str, payload: TaskRunRequest) -> TaskRunResponse:
 	except Exception as exc:
 		raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+	progress_enabled = os.getenv("GRAPHREVIEW_PROGRESS", "true").lower() == "true"
+	state_snapshot = ENV.state()
+	modules_total = len(state_snapshot.modules)
+	if progress_enabled:
+		print(f"[TASK] task={task_id} modules_total={modules_total}", flush=True)
+
 	done = False
 	total_reward = 0.0
 	total_steps = 0
 	episode_id = ""
+	completed_modules: set[str] = set()
 
 	while not done:
 		module_id = observation.module_id
+		if progress_enabled:
+			print(
+				f"[TASK] module={module_id} steps={total_steps} reward={total_reward:.2f}",
+				flush=True,
+			)
 		actions = _actions_for_module(module_id)
 		for action in actions:
 			result = ENV.step(action)
@@ -183,8 +197,15 @@ def run_task(task_id: str, payload: TaskRunRequest) -> TaskRunResponse:
 			total_reward += result.reward
 			total_steps += 1
 			done = result.done
+			if progress_enabled:
+				print(
+					f"[TASK] step={total_steps} action={action.action_type.value} reward={result.reward:.2f} done={done}",
+					flush=True,
+				)
 			if done and payload.stop_on_first_done:
 				break
+		if actions and actions[-1].action_type in {ActionType.REQUEST_CHANGES, ActionType.APPROVE}:
+			completed_modules.add(module_id)
 		if done:
 			break
 
@@ -192,6 +213,8 @@ def run_task(task_id: str, payload: TaskRunRequest) -> TaskRunResponse:
 		episode_id=episode_id,
 		total_steps=total_steps,
 		total_reward=total_reward,
+		modules_total=modules_total,
+		modules_completed=len(completed_modules),
 		done=done,
 	)
 

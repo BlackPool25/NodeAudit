@@ -7,7 +7,9 @@ class ModuleReviewState(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
     module_id: str
+    module_summary: str | None = None
     review_status: str
+    latest_review_summary: str | None = None
     issues_found: int = 0
     last_action: str | None = None
     last_reward: float = 0.0
@@ -35,3 +37,4 @@ class GraphState(BaseModel):
     module_count: int
     edge_count: int
     annotation_count: int
+    total_annotation_count: int = 0

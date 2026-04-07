@@ -96,6 +96,35 @@ class GraphManager:
             return ordered
         return ordered[: max(limit, 0)]
 
+    def resolve_module_id(self, module_id: str) -> str:
+        graph = self.load_graph()
+        if module_id in graph:
+            return module_id
+
+        candidate = module_id.strip()
+        variants = {
+            candidate,
+            candidate.replace("/", "."),
+            candidate.replace("\\", "."),
+        }
+        if candidate.endswith(".py"):
+            without_suffix = candidate[:-3]
+            variants.add(without_suffix)
+            variants.add(without_suffix.replace("/", "."))
+            variants.add(without_suffix.replace("\\", "."))
+
+        for variant in variants:
+            if variant in graph:
+                return variant
+
+        lower_lookup = {str(node).lower(): str(node) for node in graph.nodes()}
+        for variant in variants:
+            resolved = lower_lookup.get(variant.lower())
+            if resolved:
+                return resolved
+
+        raise ValueError(f"Unknown module_id: {module_id}")
+
     def centrality(self) -> dict[str, float]:
         if self._centrality_cache is not None:
             return dict(self._centrality_cache)

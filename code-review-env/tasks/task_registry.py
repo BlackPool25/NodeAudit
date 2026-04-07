@@ -62,7 +62,12 @@ def resolve_task_modules(
 	if module_override:
 		if not task.allow_module_override:
 			raise ValueError(f"Task {task.task_id} does not allow module_override")
-		requested = [module for module in module_override if module in available]
+		requested: list[str] = []
+		for module in module_override:
+			try:
+				requested.append(graph_manager.resolve_module_id(module))
+			except ValueError:
+				continue
 		if not requested:
 			raise ValueError("module_override does not include any known module ids")
 		base_modules = sorted(set(requested))

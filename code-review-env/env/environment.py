@@ -188,6 +188,8 @@ class CodeReviewEnv:
             observation = self._build_terminal_observation(runtime)
         else:
             context_request = action.context_request if action.action_type == ActionType.REQUEST_CONTEXT else None
+            if context_request is not None:
+                context_request = self.graph_manager.resolve_module_id(context_request)
             observation = self.observation_builder.build(
                 module_id=next_module,
                 task_description=runtime.task.description,
@@ -214,6 +216,7 @@ class CodeReviewEnv:
 
         snapshot = self.store.get_full_graph()
         annotations = self.store.get_review_annotations(episode_id=runtime.episode_id)
+        all_annotations = self.store.get_review_annotations()
         last_by_module: dict[str, tuple[str, float]] = {}
         for annotation in annotations:
             last_by_module[annotation.module_id] = (annotation.action_type, annotation.reward_given)
@@ -230,7 +233,9 @@ class CodeReviewEnv:
             modules.append(
                 ModuleReviewState(
                     module_id=node.module_id,
+                    module_summary=node.summary,
                     review_status=node.review_status.value,
+                    latest_review_summary=node.review_summary,
                     issues_found=len(self.store.get_findings(node.module_id)),
                     last_action=action_name,
                     last_reward=last_reward,
@@ -253,6 +258,7 @@ class CodeReviewEnv:
             module_count=len(snapshot.nodes),
             edge_count=len(snapshot.edges),
             annotation_count=len(annotations),
+            total_annotation_count=len(all_annotations),
         )
 
     def _create_grader(self, grader_name: str) -> BaseGrader:

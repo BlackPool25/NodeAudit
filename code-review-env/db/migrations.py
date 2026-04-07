@@ -21,8 +21,14 @@ def get_engine(db_path: str | Path | None = None, echo: bool = False):
         return create_engine(env_url, echo=echo, connect_args=connect_args)
 
     # Turso remote URL path (libSQL over SQLAlchemy dialect).
-    turso_url = os.getenv("TURSO_DATABASE_URL", "").strip()
-    turso_token = os.getenv("TURSO_AUTH_TOKEN", "").strip()
+    turso_url = (
+        os.getenv("GRAPHREVIEW_REMOTE_SQLITE_URL", "").strip()
+        or os.getenv("TURSO_DATABASE_URL", "").strip()
+    )
+    turso_token = (
+        os.getenv("GRAPHREVIEW_REMOTE_SQLITE_AUTH_TOKEN", "").strip()
+        or os.getenv("TURSO_AUTH_TOKEN", "").strip()
+    )
     if turso_url:
         # Example TURSO_DATABASE_URL: libsql://my-db.turso.io
         engine_url = f"sqlite+{turso_url}?secure=true"

@@ -57,8 +57,7 @@ class ObservationBuilder:
 		context_request: str | None = None,
 	) -> CodeObservation:
 		graph = self.graph_manager.load_graph()
-		if module_id not in graph:
-			raise ValueError(f"Unknown module_id: {module_id}")
+		module_id = self.graph_manager.resolve_module_id(module_id)
 
 		node = self._fetch_node(module_id)
 		centrality = self.graph_manager.centrality()
@@ -102,6 +101,7 @@ class ObservationBuilder:
 		requested_context: RequestedContext | None = None
 		requested_context_code = ""
 		if context_request:
+			context_request = self.graph_manager.resolve_module_id(context_request)
 			context_node = self._fetch_node(context_request)
 			requested_context_code = context_node.raw_code
 
@@ -142,6 +142,7 @@ class ObservationBuilder:
 		return CodeObservation(
 			module_id=module_id,
 			code=str(budgeted.payload.get("code", "")),
+			module_summary=node.summary or node.ast_summary,
 			ast_summary=self._ast_summary_payload(str(budgeted.payload.get("ast_summary_text", ""))),
 			dependency_summaries=dependency_summaries_bounded,
 			dependent_summaries=dependent_summaries_bounded,
