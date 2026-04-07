@@ -112,7 +112,18 @@ class _Visitor(ast.NodeVisitor):
         level = node.level or 0
         dotted = "." * level + module
         line = ast.get_source_segment(self._source, node) or "from"
-        self.imports.append((dotted, line, self._scope))
+        # Keep the base module edge and add candidate submodule edges.
+        # Non-module symbols are filtered later against known module ids.
+        if dotted:
+            self.imports.append((dotted, line, self._scope))
+        for alias in node.names:
+            if alias.name == "*":
+                continue
+            if dotted.endswith("."):
+                candidate = f"{dotted}{alias.name}"
+            else:
+                candidate = f"{dotted}.{alias.name}" if dotted else alias.name
+            self.imports.append((candidate, line, self._scope))
 
     def visit_Assign(self, node: ast.Assign) -> None:
         if isinstance(node.value, ast.Constant):

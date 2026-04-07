@@ -1,0 +1,1703 @@
+{
+  "edges": [
+    {
+      "edge_type": "explicit_import",
+      "import_line": "import config",
+      "source": "auth",
+      "target": "config",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "import config",
+      "source": "cart",
+      "target": "config",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "import cart",
+      "source": "checkout",
+      "target": "cart",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "import payments",
+      "source": "checkout",
+      "target": "payments",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "from config import SETTINGS",
+      "source": "database",
+      "target": "config",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:GiantService",
+      "source": "huge_module",
+      "target": "huge_module::GiantService",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_1",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_1",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_10",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_10",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_11",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_11",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_12",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_12",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_13",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_13",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_14",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_14",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_15",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_15",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_16",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_16",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_17",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_17",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_18",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_18",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_19",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_19",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_2",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_2",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_20",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_20",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_21",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_21",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_22",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_22",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_23",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_23",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_24",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_24",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_25",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_25",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_26",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_26",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_27",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_27",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_28",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_28",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_29",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_29",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_3",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_3",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_30",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_30",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_31",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_31",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_32",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_32",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_33",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_33",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_34",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_34",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_35",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_35",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_36",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_36",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_37",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_37",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_38",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_38",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_39",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_39",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_4",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_4",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_40",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_40",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_41",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_41",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_42",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_42",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_43",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_43",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_44",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_44",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_45",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_45",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_5",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_5",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_6",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_6",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_7",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_7",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_8",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_8",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:auto_func_9",
+      "source": "huge_module",
+      "target": "huge_module::auto_func_9",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:bootstrap",
+      "source": "huge_module",
+      "target": "huge_module::bootstrap",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:helper_alpha",
+      "source": "huge_module",
+      "target": "huge_module::helper_alpha",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "contains:helper_beta",
+      "source": "huge_module",
+      "target": "huge_module::helper_beta",
+      "weight": 0.2
+    },
+    {
+      "edge_type": "intra_file",
+      "import_line": "call:helper_alpha",
+      "source": "huge_module::helper_beta",
+      "target": "huge_module::helper_alpha",
+      "weight": 0.5
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "from validators import is_non_empty",
+      "source": "inventory",
+      "target": "validators",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "from inventory import is_available",
+      "source": "utils",
+      "target": "inventory",
+      "weight": 1.0
+    }
+  ],
+  "episode_id": null,
+  "metrics": {
+    "confidence_score": 0.1,
+    "consistency": 1.0,
+    "dependency_attribution_validity": 0.0,
+    "f1": 0.0,
+    "false_negatives": 73,
+    "false_positives": 0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "security_coverage": 0.0,
+    "severity_weighted_coverage": 0.0,
+    "true_positives": 0
+  },
+  "nodes": [
+    {
+      "linter_findings": [
+        {
+          "code": "C0116",
+          "id": 1193,
+          "line": 6,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0301",
+          "id": 1194,
+          "line": 7,
+          "message": "Line too long (137/100)",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "auth",
+      "module_shape": "functions=issue_session_token",
+      "name": "auth",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [issue_session_token(user_id: str)->str] | issues: 2 | depends_on: [config]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0116",
+          "id": 1195,
+          "line": 6,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1196,
+          "line": 13,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "cart",
+      "module_shape": "functions=calculate_subtotal, calculate_total",
+      "name": "cart",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [calculate_subtotal(items: list[dict[str, float]])->float, calculate_total(items: list[dict[str, float]])->float] | issues: 2 | depends_on: [config]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0116",
+          "id": 1197,
+          "line": 7,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "checkout",
+      "module_shape": "functions=submit_order",
+      "name": "checkout",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [submit_order(items: list[dict[str, float]])->str] | issues: 1 | depends_on: [cart, payments]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "B105",
+          "id": 1198,
+          "line": 6,
+          "message": "Possible hardcoded password: 'hardcoded-dev-key'",
+          "severity": "low",
+          "tool": "bandit"
+        }
+      ],
+      "module_id": "config",
+      "module_shape": "No top-level functions/classes; likely constants, helpers, or script-style module.",
+      "name": "config",
+      "reviews": [],
+      "security_findings": [
+        {
+          "code": "B105",
+          "line": 6,
+          "message": "Possible hardcoded password: 'hardcoded-dev-key'",
+          "severity": "low"
+        }
+      ],
+      "status": "pending",
+      "summary": "exports: [] | issues: 1 | depends_on: []"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0114",
+          "id": 1199,
+          "line": 1,
+          "message": "Missing module docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "E0611",
+          "id": 1200,
+          "line": 1,
+          "message": "No name 'SETTINGS' in module 'config'",
+          "severity": "high",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1201,
+          "line": 4,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "database",
+      "module_shape": "functions=get_connection_url",
+      "name": "database",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [get_connection_url()->str] | issues: 3 | depends_on: [config, config.SETTINGS]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0116",
+          "id": 1202,
+          "line": 4,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1203,
+          "line": 438,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1204,
+          "line": 442,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0115",
+          "id": 1205,
+          "line": 446,
+          "message": "Missing class docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "R0903",
+          "id": 1206,
+          "line": 446,
+          "message": "Too few public methods (1/2)",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1207,
+          "line": 447,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1208,
+          "line": 451,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1209,
+          "line": 455,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1210,
+          "line": 459,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1211,
+          "line": 463,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1212,
+          "line": 467,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1213,
+          "line": 471,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1214,
+          "line": 475,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1215,
+          "line": 479,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1216,
+          "line": 483,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1217,
+          "line": 487,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1218,
+          "line": 491,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1219,
+          "line": 495,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1220,
+          "line": 499,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1221,
+          "line": 503,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1222,
+          "line": 507,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1223,
+          "line": 511,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1224,
+          "line": 515,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1225,
+          "line": 519,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1226,
+          "line": 523,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1227,
+          "line": 527,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1228,
+          "line": 531,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1229,
+          "line": 535,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1230,
+          "line": 539,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1231,
+          "line": 543,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1232,
+          "line": 547,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1233,
+          "line": 551,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1234,
+          "line": 555,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1235,
+          "line": 559,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1236,
+          "line": 563,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1237,
+          "line": 567,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1238,
+          "line": 571,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1239,
+          "line": 575,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1240,
+          "line": 579,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1241,
+          "line": 583,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1242,
+          "line": 587,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1243,
+          "line": 591,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1244,
+          "line": 595,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1245,
+          "line": 599,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1246,
+          "line": 603,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1247,
+          "line": 607,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1248,
+          "line": 611,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1249,
+          "line": 615,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1250,
+          "line": 619,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1251,
+          "line": 623,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1252,
+          "line": 627,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "huge_module",
+      "module_shape": "No top-level functions/classes; likely constants, helpers, or script-style module.",
+      "name": "huge_module",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [bootstrap()->int, helper_alpha()->int, helper_beta()->int, run(self)->int, auto_func_1()->int] | issues: 51 | depends_on: []"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::GiantService",
+      "module_shape": "classes=GiantService",
+      "name": "GiantService",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk GiantService lines 446-448"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_1",
+      "module_shape": "functions=auto_func_1",
+      "name": "auto_func_1",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_1 lines 451-452"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_10",
+      "module_shape": "functions=auto_func_10",
+      "name": "auto_func_10",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_10 lines 487-488"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_11",
+      "module_shape": "functions=auto_func_11",
+      "name": "auto_func_11",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_11 lines 491-492"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_12",
+      "module_shape": "functions=auto_func_12",
+      "name": "auto_func_12",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_12 lines 495-496"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_13",
+      "module_shape": "functions=auto_func_13",
+      "name": "auto_func_13",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_13 lines 499-500"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_14",
+      "module_shape": "functions=auto_func_14",
+      "name": "auto_func_14",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_14 lines 503-504"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_15",
+      "module_shape": "functions=auto_func_15",
+      "name": "auto_func_15",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_15 lines 507-508"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_16",
+      "module_shape": "functions=auto_func_16",
+      "name": "auto_func_16",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_16 lines 511-512"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_17",
+      "module_shape": "functions=auto_func_17",
+      "name": "auto_func_17",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_17 lines 515-516"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_18",
+      "module_shape": "functions=auto_func_18",
+      "name": "auto_func_18",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_18 lines 519-520"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_19",
+      "module_shape": "functions=auto_func_19",
+      "name": "auto_func_19",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_19 lines 523-524"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_2",
+      "module_shape": "functions=auto_func_2",
+      "name": "auto_func_2",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_2 lines 455-456"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_20",
+      "module_shape": "functions=auto_func_20",
+      "name": "auto_func_20",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_20 lines 527-528"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_21",
+      "module_shape": "functions=auto_func_21",
+      "name": "auto_func_21",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_21 lines 531-532"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_22",
+      "module_shape": "functions=auto_func_22",
+      "name": "auto_func_22",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_22 lines 535-536"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_23",
+      "module_shape": "functions=auto_func_23",
+      "name": "auto_func_23",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_23 lines 539-540"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_24",
+      "module_shape": "functions=auto_func_24",
+      "name": "auto_func_24",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_24 lines 543-544"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_25",
+      "module_shape": "functions=auto_func_25",
+      "name": "auto_func_25",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_25 lines 547-548"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_26",
+      "module_shape": "functions=auto_func_26",
+      "name": "auto_func_26",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_26 lines 551-552"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_27",
+      "module_shape": "functions=auto_func_27",
+      "name": "auto_func_27",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_27 lines 555-556"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_28",
+      "module_shape": "functions=auto_func_28",
+      "name": "auto_func_28",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_28 lines 559-560"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_29",
+      "module_shape": "functions=auto_func_29",
+      "name": "auto_func_29",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_29 lines 563-564"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_3",
+      "module_shape": "functions=auto_func_3",
+      "name": "auto_func_3",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_3 lines 459-460"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_30",
+      "module_shape": "functions=auto_func_30",
+      "name": "auto_func_30",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_30 lines 567-568"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_31",
+      "module_shape": "functions=auto_func_31",
+      "name": "auto_func_31",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_31 lines 571-572"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_32",
+      "module_shape": "functions=auto_func_32",
+      "name": "auto_func_32",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_32 lines 575-576"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_33",
+      "module_shape": "functions=auto_func_33",
+      "name": "auto_func_33",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_33 lines 579-580"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_34",
+      "module_shape": "functions=auto_func_34",
+      "name": "auto_func_34",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_34 lines 583-584"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_35",
+      "module_shape": "functions=auto_func_35",
+      "name": "auto_func_35",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_35 lines 587-588"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_36",
+      "module_shape": "functions=auto_func_36",
+      "name": "auto_func_36",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_36 lines 591-592"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_37",
+      "module_shape": "functions=auto_func_37",
+      "name": "auto_func_37",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_37 lines 595-596"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_38",
+      "module_shape": "functions=auto_func_38",
+      "name": "auto_func_38",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_38 lines 599-600"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_39",
+      "module_shape": "functions=auto_func_39",
+      "name": "auto_func_39",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_39 lines 603-604"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_4",
+      "module_shape": "functions=auto_func_4",
+      "name": "auto_func_4",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_4 lines 463-464"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_40",
+      "module_shape": "functions=auto_func_40",
+      "name": "auto_func_40",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_40 lines 607-608"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_41",
+      "module_shape": "functions=auto_func_41",
+      "name": "auto_func_41",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_41 lines 611-612"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_42",
+      "module_shape": "functions=auto_func_42",
+      "name": "auto_func_42",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_42 lines 615-616"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_43",
+      "module_shape": "functions=auto_func_43",
+      "name": "auto_func_43",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_43 lines 619-620"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_44",
+      "module_shape": "functions=auto_func_44",
+      "name": "auto_func_44",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_44 lines 623-624"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_45",
+      "module_shape": "functions=auto_func_45",
+      "name": "auto_func_45",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_45 lines 627-628"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_5",
+      "module_shape": "functions=auto_func_5",
+      "name": "auto_func_5",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_5 lines 467-468"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_6",
+      "module_shape": "functions=auto_func_6",
+      "name": "auto_func_6",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_6 lines 471-472"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_7",
+      "module_shape": "functions=auto_func_7",
+      "name": "auto_func_7",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_7 lines 475-476"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_8",
+      "module_shape": "functions=auto_func_8",
+      "name": "auto_func_8",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_8 lines 479-480"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::auto_func_9",
+      "module_shape": "functions=auto_func_9",
+      "name": "auto_func_9",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk auto_func_9 lines 483-484"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::bootstrap",
+      "module_shape": "functions=bootstrap",
+      "name": "bootstrap",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk bootstrap lines 4-5"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::helper_alpha",
+      "module_shape": "functions=helper_alpha",
+      "name": "helper_alpha",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk helper_alpha lines 438-439"
+    },
+    {
+      "linter_findings": [],
+      "module_id": "huge_module::helper_beta",
+      "module_shape": "functions=helper_beta",
+      "name": "helper_beta",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "Chunk helper_beta lines 442-443"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0114",
+          "id": 1253,
+          "line": 1,
+          "message": "Missing module docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1254,
+          "line": 7,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "inventory",
+      "module_shape": "functions=is_available",
+      "name": "inventory",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [is_available(item_name: str)->bool] | issues: 2 | depends_on: [validators, validators.is_non_empty]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0114",
+          "id": 1255,
+          "line": 1,
+          "message": "Missing module docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1256,
+          "line": 4,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "notifications",
+      "module_shape": "functions=send_email",
+      "name": "notifications",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [send_email(recipient: str, body: str)->None] | issues: 2 | depends_on: [smtplib]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "B404",
+          "id": 1257,
+          "line": 3,
+          "message": "Consider possible security implications associated with the subprocess module.",
+          "severity": "low",
+          "tool": "bandit"
+        },
+        {
+          "code": "C0116",
+          "id": 1258,
+          "line": 6,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "B602",
+          "id": 1259,
+          "line": 9,
+          "message": "subprocess call with shell=True identified, security issue.",
+          "severity": "high",
+          "tool": "bandit"
+        },
+        {
+          "code": "C0116",
+          "id": 1260,
+          "line": 12,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "payments",
+      "module_shape": "functions=run_gateway_check, charge",
+      "name": "payments",
+      "reviews": [],
+      "security_findings": [
+        {
+          "code": "B404",
+          "line": 3,
+          "message": "Consider possible security implications associated with the subprocess module.",
+          "severity": "low"
+        },
+        {
+          "code": "B602",
+          "line": 9,
+          "message": "subprocess call with shell=True identified, security issue.",
+          "severity": "high"
+        }
+      ],
+      "status": "pending",
+      "summary": "exports: [run_gateway_check(endpoint: str)->int, charge(total: float)->str] | issues: 4 | depends_on: [subprocess]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0114",
+          "id": 1261,
+          "line": 1,
+          "message": "Missing module docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1262,
+          "line": 4,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "utils",
+      "module_shape": "functions=pick_item",
+      "name": "utils",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [pick_item(preferred: str, fallback: str)->str] | issues: 2 | depends_on: [inventory, inventory.is_available]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0114",
+          "id": 1263,
+          "line": 1,
+          "message": "Missing module docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1264,
+          "line": 2,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 1265,
+          "line": 6,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "validators",
+      "module_shape": "functions=is_non_empty, validate_coupon",
+      "name": "validators",
+      "reviews": [],
+      "security_findings": [],
+      "status": "pending",
+      "summary": "exports: [is_non_empty(value: str | None)->bool, validate_coupon(code: str | None)->bool] | issues: 3 | depends_on: []"
+    }
+  ],
+  "report_schema_version": "1.0.0",
+  "rl_integrity": {
+    "deterministic_replay_notes": "easy/medium deterministic by construction; hard uses judge with temperature=0",
+    "reward_causality_tracked": true,
+    "trajectory_reconstructable": true
+  },
+  "scope_modules": [
+    "auth",
+    "cart",
+    "checkout",
+    "config",
+    "database",
+    "huge_module",
+    "huge_module::GiantService",
+    "huge_module::auto_func_1",
+    "huge_module::auto_func_10",
+    "huge_module::auto_func_11",
+    "huge_module::auto_func_12",
+    "huge_module::auto_func_13",
+    "huge_module::auto_func_14",
+    "huge_module::auto_func_15",
+    "huge_module::auto_func_16",
+    "huge_module::auto_func_17",
+    "huge_module::auto_func_18",
+    "huge_module::auto_func_19",
+    "huge_module::auto_func_2",
+    "huge_module::auto_func_20",
+    "huge_module::auto_func_21",
+    "huge_module::auto_func_22",
+    "huge_module::auto_func_23",
+    "huge_module::auto_func_24",
+    "huge_module::auto_func_25",
+    "huge_module::auto_func_26",
+    "huge_module::auto_func_27",
+    "huge_module::auto_func_28",
+    "huge_module::auto_func_29",
+    "huge_module::auto_func_3",
+    "huge_module::auto_func_30",
+    "huge_module::auto_func_31",
+    "huge_module::auto_func_32",
+    "huge_module::auto_func_33",
+    "huge_module::auto_func_34",
+    "huge_module::auto_func_35",
+    "huge_module::auto_func_36",
+    "huge_module::auto_func_37",
+    "huge_module::auto_func_38",
+    "huge_module::auto_func_39",
+    "huge_module::auto_func_4",
+    "huge_module::auto_func_40",
+    "huge_module::auto_func_41",
+    "huge_module::auto_func_42",
+    "huge_module::auto_func_43",
+    "huge_module::auto_func_44",
+    "huge_module::auto_func_45",
+    "huge_module::auto_func_5",
+    "huge_module::auto_func_6",
+    "huge_module::auto_func_7",
+    "huge_module::auto_func_8",
+    "huge_module::auto_func_9",
+    "huge_module::bootstrap",
+    "huge_module::helper_alpha",
+    "huge_module::helper_beta",
+    "inventory",
+    "notifications",
+    "payments",
+    "utils",
+    "validators"
+  ],
+  "source_root": "/home/lightdesk/Downloads/Projects/NodeAudit/code-review-env/sample_project"
+}

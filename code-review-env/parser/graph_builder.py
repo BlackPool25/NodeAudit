@@ -88,6 +88,17 @@ def build_edges(
                 )
 
         available_chunk_ids = chunk_ids_by_parent.get(parsed.module_id, set())
+        for chunk_id in sorted(available_chunk_ids):
+            edges.append(
+                EdgeRecord(
+                    source_module_id=parsed.module_id,
+                    target_module_id=chunk_id,
+                    edge_type=EdgeType.INTRA_FILE,
+                    import_line=f"contains:{chunk_id.split('::')[-1]}",
+                    scope="module_level",
+                    weight=0.2,
+                )
+            )
         edges.extend(_build_intra_file_edges(parsed, available_chunk_ids))
 
     graph = nx.DiGraph()

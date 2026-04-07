@@ -2,7 +2,7 @@
 
 Dependency-aware RL environment for Python code review, backed by persistent SQLite/libSQL graph storage.
 
-## Implemented Through Phase 4
+## Implemented Through Phase 5
 
 Phase 1:
 
@@ -26,6 +26,14 @@ Phase 4:
 - Added task registry and task orchestration for `style_review`, `logic_review`, `cascade_review`.
 - Added operational FastAPI endpoints for automation and future phases.
 - Added module override policy for direct module reviews.
+
+Phase 5:
+
+- Added `visualizer/pyvis_renderer.py` for standalone interactive dependency graph HTML output.
+- Added `visualizer/report_generator.py` for markdown + JSON reports from persisted DB state.
+- Added module-filtered report scope (seed modules + related dependency neighbors by hop count).
+- Added confidence scoring that balances precision/recall with severity/security coverage and attribution validity.
+- Added API endpoint to generate artifacts and CLI support for real project runs.
 
 ## Core Runtime Components
 
@@ -54,7 +62,24 @@ Phase 4:
     - `POST /debug/reset-annotations`
     - `POST /tasks/{task_id}/run`
     - `GET /reports/accuracy`
+    - `POST /reports/generate`
     - `GET /graph/export`
+
+- `visualizer/pyvis_renderer.py`
+  - Renders dependency graph with review-aware colors and edge-type styling.
+  - Produces standalone HTML suitable for local and hosted viewing.
+
+- `visualizer/report_generator.py`
+  - Produces:
+    - `*_report.md`
+    - `*_report.json`
+    - `*_graph.html`
+  - Includes:
+    - module-level summaries
+    - security findings analysis
+    - cascade attribution summaries
+    - RL trajectory integrity notes
+    - confidence scoring metrics
 
 ## Database and Turso Support
 
@@ -101,6 +126,7 @@ General runtime settings:
 - `GRAPHREVIEW_MAX_FILES` (default `5000`)
 - `GRAPHREVIEW_SEED_WORKERS` (default `min(4, cpu_count)`)
 - `GRAPHREVIEW_PROGRESS` (`true|false`, default `true`)
+- `GRAPHREVIEW_OUTPUT_DIR` (optional report output folder, default `outputs`)
 
 ## Quickstart
 
@@ -132,6 +158,42 @@ Policy behavior:
 - For medium/hard tasks, module overrides are automatically expanded to one-hop dependencies and dependents.
 - This preserves dependency context quality for cascade reasoning.
 
+CLI module-filtered execution (generic, real projects supported):
+
+```bash
+python -m graders.review_runner /path/to/project \
+  --grader hard \
+  --force-seed \
+  --modules checkout auth \
+  --filter-hops 1 \
+  --report \
+  --output-dir outputs/real_project \
+  --report-prefix real_project
+```
+
+This mode keeps review scope connected to selected modules by traversing related dependencies.
+
+API report generation (future UI/server integration):
+
+```bash
+curl -s -X POST http://localhost:8000/reports/generate \
+  -H "content-type: application/json" \
+  -d '{"module_override":["checkout"],"hops":1,"output_dir":"outputs/api"}'
+```
+
+Frontend results console (served by uvicorn app):
+
+- `GET /` opens the report browser UI.
+- `GET /ui/results` lists discovered `*_report.json` artifacts under `GRAPHREVIEW_OUTPUT_DIR`.
+- `GET /ui/result?report_path=...` returns report payload + DB schema columns + connectivity diagnostics.
+- `GET /artifacts/...` serves generated HTML/JSON/Markdown assets for direct viewing.
+
+If graphs look fragmented, regenerate with the latest parser/edge builder and force reseed:
+
+```bash
+python -m db.seed /path/to/project --force --db-path /tmp/graphreview.db
+```
+
 ## Accuracy Verification Against Ground Truth
 
 Verified on `sample_project` by running each task with deterministic action generation and comparing stored review actions against persisted linter findings.
@@ -147,6 +209,44 @@ Notes:
 - Accuracy endpoint computes precision/recall from persisted annotations and module findings.
 - Hard grader stores judge metadata for auditability in structured annotation payloads.
 
+## Confidence Scoring Policy (Phase 5)
+
+Confidence score is designed to generalize beyond sample fixtures. It is not recall-only.
+
+Computed metrics:
+
+- precision
+- recall
+- f1
+- severity-weighted finding coverage
+- security finding coverage (Bandit findings matched by review flags)
+- dependency attribution validity (graph-backed)
+- consistency (penalizes contradictory terminal actions)
+
+Weighted confidence formula:
+
+- `0.35 * f1`
+- `0.20 * severity_weighted_coverage`
+- `0.15 * security_coverage`
+- `0.20 * dependency_attribution_validity`
+- `0.10 * consistency`
+
+This design rewards useful review behavior on unseen modules where raw recall alone can be misleading.
+
+## Visualization and Reporting Output
+
+Generated artifacts include:
+
+- Interactive graph with color-coded review status and edge-type styling.
+- Markdown report with module summaries, security analysis, and cascade attribution details.
+- JSON report with machine-readable nodes, edges, reviews, and quality metrics.
+
+Security report behavior:
+
+- Security findings are listed per module with severity/code/line/message.
+- Reports call out what is wrong and whether reviews covered each security signal.
+- Cascade attributions are listed with step/action/reward evidence.
+
 ## Testing
 
 Targeted regression + phase tests:
@@ -156,6 +256,7 @@ pytest -q tests/test_phase2_graph_manager.py \
   tests/test_phase2_token_budget.py \
   tests/test_phase2_observation.py \
   tests/test_graders.py \
+  tests/test_phase5_reporting.py \
   tests/test_phase4_environment.py \
   tests/test_phase4_server.py
 ```

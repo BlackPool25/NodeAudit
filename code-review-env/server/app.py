@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import uvicorn
+import networkx as nx
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
+from sqlmodel import Session, select
 
+from db.schema import ModuleEdge, ModuleNode
 from db.store import Store
 from env.action import ActionType, ReviewAction
 from env.environment import CodeReviewEnv, StepResult
 from env.observation import CodeObservation
 from env.state import GraphState
+from visualizer.report_generator import GeneratedArtifacts, generate_phase5_outputs
 
 
 class ResetRequest(BaseModel):
@@ -63,6 +70,59 @@ class AccuracyReport(BaseModel):
 	recall: float
 
 
+class ReportGenerateRequest(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	episode_id: str | None = None
+	module_override: list[str] | None = None
+	hops: int = 1
+	output_dir: str = "outputs"
+	report_prefix: str = "graphreview"
+
+
+class ReportGenerateResponse(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	artifacts: GeneratedArtifacts
+
+
+class ResultSummary(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	report_path: str
+	report_title: str
+	report_json_url: str
+	graph_html_url: str
+	markdown_url: str | None = None
+	confidence_score: float | None = None
+	node_count: int | None = None
+	edge_count: int | None = None
+	generated_at: float
+
+
+class ConnectivitySummary(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	node_count: int
+	edge_count: int
+	connected_components: int
+	largest_component_size: int
+	isolated_nodes: int
+	isolation_ratio: float
+
+
+class ResultDetail(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	report: dict[str, object]
+	connectivity: ConnectivitySummary
+	db_columns: dict[str, list[str]]
+
+
+OUTPUT_ROOT = Path(os.getenv("GRAPHREVIEW_OUTPUT_DIR", "outputs")).resolve()
+UI_INDEX_PATH = Path(__file__).resolve().parent / "static" / "index.html"
+
+
 def _default_source_root() -> str:
 	configured = os.getenv("GRAPHREVIEW_SOURCE_ROOT", "sample_project")
 	return str(Path(configured).resolve())
@@ -77,6 +137,169 @@ ENV = CodeReviewEnv(source_root=_default_source_root(), db_path=_default_db_path
 STORE = Store(source_root=_default_source_root(), db_path=_default_db_path())
 
 app = FastAPI(title="GraphReview OpenEnv Server", version="0.4.0")
+app.mount("/artifacts", StaticFiles(directory=str(OUTPUT_ROOT), check_dir=False), name="artifacts")
+
+
+def _artifact_url(path: Path) -> str:
+	rel = path.relative_to(OUTPUT_ROOT).as_posix()
+	return f"/artifacts/{rel}"
+
+
+def _safe_artifact_path(report_path: str) -> Path:
+	path = (OUTPUT_ROOT / report_path).resolve()
+	if not str(path).startswith(str(OUTPUT_ROOT)):
+		raise HTTPException(status_code=400, detail="Invalid report path")
+	if not path.is_file():
+		raise HTTPException(status_code=404, detail=f"Report file not found: {report_path}")
+	return path
+
+
+def _discover_results() -> list[ResultSummary]:
+	if not OUTPUT_ROOT.exists():
+		return []
+
+	results: list[ResultSummary] = []
+	for report_json in sorted(OUTPUT_ROOT.rglob("*_report.json")):
+		prefix = report_json.name.removesuffix("_report.json")
+		graph_html = report_json.with_name(f"{prefix}_graph.html")
+		markdown = report_json.with_name(f"{prefix}_report.md")
+
+		confidence: float | None = None
+		node_count: int | None = None
+		edge_count: int | None = None
+		report_title = report_json.parent.name
+
+		try:
+			payload = json.loads(report_json.read_text(encoding="utf-8"))
+			metrics = payload.get("metrics", {})
+			confidence = float(metrics.get("confidence_score")) if "confidence_score" in metrics else None
+			nodes = payload.get("nodes", [])
+			edges = payload.get("edges", [])
+			node_count = len(nodes) if isinstance(nodes, list) else None
+			edge_count = len(edges) if isinstance(edges, list) else None
+			report_title = str(payload.get("source_root") or report_title)
+		except Exception:
+			pass
+
+		rel = report_json.relative_to(OUTPUT_ROOT).as_posix()
+		results.append(
+			ResultSummary(
+				report_path=rel,
+				report_title=report_title,
+				report_json_url=_artifact_url(report_json),
+				graph_html_url=_artifact_url(graph_html) if graph_html.exists() else "",
+				markdown_url=_artifact_url(markdown) if markdown.exists() else None,
+				confidence_score=confidence,
+				node_count=node_count,
+				edge_count=edge_count,
+				generated_at=report_json.stat().st_mtime,
+			)
+		)
+
+	results.sort(key=lambda item: item.generated_at, reverse=True)
+	return results
+
+
+def _connectivity_summary_for_scope(scope_modules: list[str]) -> ConnectivitySummary:
+	with Session(STORE.engine) as session:
+		nodes = list(
+			session.exec(
+				select(ModuleNode).where(
+					ModuleNode.source_root == STORE.config.source_root,
+					ModuleNode.module_id.in_(scope_modules),
+				)
+			).all()
+		)
+		edges = list(
+			session.exec(
+				select(ModuleEdge).where(
+					ModuleEdge.source_root == STORE.config.source_root,
+					ModuleEdge.source_module_id.in_(scope_modules),
+					ModuleEdge.target_module_id.in_(scope_modules),
+				)
+			).all()
+		)
+
+	graph = nx.Graph()
+	for node in nodes:
+		graph.add_node(node.module_id)
+	for edge in edges:
+		graph.add_edge(edge.source_module_id, edge.target_module_id)
+
+	components = list(nx.connected_components(graph)) if graph.number_of_nodes() else []
+	largest_component = max((len(component) for component in components), default=0)
+	isolated_nodes = sum(1 for _, degree in graph.degree() if degree == 0)
+	node_count = graph.number_of_nodes()
+
+	return ConnectivitySummary(
+		node_count=node_count,
+		edge_count=graph.number_of_edges(),
+		connected_components=len(components),
+		largest_component_size=largest_component,
+		isolated_nodes=isolated_nodes,
+		isolation_ratio=(isolated_nodes / node_count) if node_count else 0.0,
+	)
+
+
+@app.get("/", response_class=HTMLResponse)
+def ui_home() -> HTMLResponse:
+	if not UI_INDEX_PATH.exists():
+		raise HTTPException(status_code=500, detail="UI index not found")
+	return HTMLResponse(UI_INDEX_PATH.read_text(encoding="utf-8"))
+
+
+@app.get("/ui/results", response_model=list[ResultSummary])
+def ui_results() -> list[ResultSummary]:
+	return _discover_results()
+
+
+@app.get("/ui/result", response_model=ResultDetail)
+def ui_result(report_path: str = Query(..., min_length=1)) -> ResultDetail:
+	report_json = _safe_artifact_path(report_path)
+	try:
+		payload = json.loads(report_json.read_text(encoding="utf-8"))
+	except Exception as exc:
+		raise HTTPException(status_code=400, detail=f"Invalid report JSON: {exc}") from exc
+
+	scope_modules = payload.get("scope_modules", [])
+	if not isinstance(scope_modules, list) or not all(isinstance(item, str) for item in scope_modules):
+		raise HTTPException(status_code=400, detail="Report payload missing scope_modules")
+
+	connectivity = _connectivity_summary_for_scope(scope_modules)
+
+	return ResultDetail(
+		report=payload,
+		connectivity=connectivity,
+		db_columns={
+			"module_node": [
+				"id",
+				"source_root",
+				"module_id",
+				"name",
+				"raw_code",
+				"ast_summary",
+				"summary",
+				"linter_flags",
+				"parent_module_id",
+				"is_chunk",
+				"dependency_reason",
+				"review_annotation",
+				"review_status",
+				"review_summary",
+				"created_at",
+				"updated_at",
+			],
+			"module_edge": [
+				"id",
+				"source_root",
+				"source_module_id",
+				"target_module_id",
+				"edge_type",
+				"import_line",
+				"weight",
+			],
+		},
+	)
 
 
 @app.get("/health")
@@ -295,6 +518,23 @@ def export_graph(episode_id: str = Query(default="")) -> dict[str, object]:
 			for item in annotations
 		],
 	}
+
+
+@app.post("/reports/generate", response_model=ReportGenerateResponse)
+def generate_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
+	try:
+		artifacts = generate_phase5_outputs(
+			source_root=ENV.source_root,
+			db_path=_default_db_path(),
+			output_dir=payload.output_dir,
+			episode_id=payload.episode_id,
+			module_filter=payload.module_override,
+			hops=payload.hops,
+			report_prefix=payload.report_prefix,
+		)
+	except Exception as exc:
+		raise HTTPException(status_code=400, detail=str(exc)) from exc
+	return ReportGenerateResponse(artifacts=artifacts)
 
 
 def main() -> None:

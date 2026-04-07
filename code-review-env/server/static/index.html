@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GraphReview Results Console</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #0f766e;
+      --accent-2: #d97706;
+      --danger: #b91c1c;
+      --border: #d6d3d1;
+      --chip: #eef2ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at top right, #fef3c7 0%, var(--bg) 40%);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, #fffbeb, #f0fdfa);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0.02em;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr 420px;
+      gap: 12px;
+      padding: 12px;
+      height: calc(100vh - 64px);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .results-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .result-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .result-item:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .result-item.active {
+      border-color: var(--accent-2);
+      box-shadow: inset 0 0 0 1px var(--accent-2);
+      background: #fffbeb;
+    }
+
+    .meta-row {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 0.78rem;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid #c7d2fe;
+      background: var(--chip);
+      padding: 2px 8px;
+    }
+
+    .viewer-wrap {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+    }
+
+    .viewer-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 10px;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #f5f5f4;
+    }
+
+    .details {
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .section {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      background: white;
+    }
+
+    .section h3 {
+      margin: 0 0 8px;
+      font-size: 0.95rem;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      font-size: 0.86rem;
+      padding: 3px 0;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .kv:last-child {
+      border-bottom: 0;
+    }
+
+    .danger {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 4px 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .node-list {
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .node-row {
+      padding: 6px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+    }
+
+    .node-row:hover {
+      border-color: var(--accent);
+      background: #f0fdfa;
+    }
+
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.78rem;
+      max-height: 160px;
+      overflow: auto;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px;
+    }
+
+    @media (max-width: 1200px) {
+      .layout {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .panel {
+        min-height: 280px;
+      }
+      .viewer-wrap {
+        min-height: 60vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>GraphReview Results Console</h1>
+    <div class="muted" id="status">Loading results...</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="results-list" id="results"></div>
+    </section>
+
+    <section class="panel viewer-wrap">
+      <div class="viewer-toolbar">
+        <strong id="viewerTitle">No report selected</strong>
+        <a id="reportJsonLink" href="#" target="_blank" rel="noopener">Report JSON</a>
+      </div>
+      <iframe id="graphFrame" title="Graph visualization"></iframe>
+    </section>
+
+    <section class="panel details">
+      <article class="section">
+        <h3>Connectivity Diagnostics</h3>
+        <div id="diag"></div>
+      </article>
+
+      <article class="section">
+        <h3>Schema Columns</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Columns</th>
+            </tr>
+          </thead>
+          <tbody id="schemaRows"></tbody>
+        </table>
+      </article>
+
+      <article class="section">
+        <h3>Modules in Scope</h3>
+        <div class="node-list" id="nodes"></div>
+      </article>
+
+      <article class="section">
+        <h3>Selected Module Detail</h3>
+        <pre id="moduleDetail">Select a module to inspect report fields, findings, and reviews.</pre>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const resultsEl = document.getElementById('results');
+    const statusEl = document.getElementById('status');
+    const graphFrame = document.getElementById('graphFrame');
+    const viewerTitle = document.getElementById('viewerTitle');
+    const reportJsonLink = document.getElementById('reportJsonLink');
+    const diagEl = document.getElementById('diag');
+    const schemaRows = document.getElementById('schemaRows');
+    const nodesEl = document.getElementById('nodes');
+    const moduleDetailEl = document.getElementById('moduleDetail');
+
+    let currentNodes = [];
+
+    function fmtPct(value) {
+      return `${(Number(value || 0) * 100).toFixed(1)}%`;
+    }
+
+    function fmtDate(seconds) {
+      return new Date(seconds * 1000).toLocaleString();
+    }
+
+    function renderResultList(results) {
+      resultsEl.innerHTML = '';
+      if (!results.length) {
+        resultsEl.innerHTML = '<div class="muted">No reports found in outputs. Generate one first via CLI or /reports/generate.</div>';
+        return;
+      }
+
+      results.forEach((result, idx) => {
+        const item = document.createElement('button');
+        item.className = 'result-item';
+        item.type = 'button';
+        item.innerHTML = `
+          <div><strong>${result.report_title}</strong></div>
+          <div class="muted" style="font-size:0.78rem;">${result.report_path}</div>
+          <div class="meta-row">
+            <span class="chip">nodes ${result.node_count ?? '-'}</span>
+            <span class="chip">edges ${result.edge_count ?? '-'}</span>
+            <span class="chip">confidence ${result.confidence_score == null ? '-' : Number(result.confidence_score).toFixed(3)}</span>
+          </div>
+          <div class="muted" style="font-size:0.75rem; margin-top:6px;">${fmtDate(result.generated_at)}</div>
+        `;
+        item.addEventListener('click', () => selectResult(result, item));
+        resultsEl.appendChild(item);
+
+        if (idx === 0) {
+          item.click();
+        }
+      });
+    }
+
+    function renderSchema(columns) {
+      schemaRows.innerHTML = '';
+      Object.entries(columns || {}).forEach(([tableName, cols]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${tableName}</td><td>${(cols || []).join(', ')}</td>`;
+        schemaRows.appendChild(tr);
+      });
+    }
+
+    function renderDiagnostics(connectivity, metrics) {
+      const isolationClass = connectivity.isolation_ratio > 0.35 ? 'danger' : '';
+      diagEl.innerHTML = `
+        <div class="kv"><span>Nodes</span><strong>${connectivity.node_count}</strong></div>
+        <div class="kv"><span>Edges</span><strong>${connectivity.edge_count}</strong></div>
+        <div class="kv"><span>Connected Components</span><strong>${connectivity.connected_components}</strong></div>
+        <div class="kv"><span>Largest Component</span><strong>${connectivity.largest_component_size}</strong></div>
+        <div class="kv"><span>Isolated Nodes</span><strong class="${isolationClass}">${connectivity.isolated_nodes} (${fmtPct(connectivity.isolation_ratio)})</strong></div>
+        <div class="kv"><span>Precision / Recall / F1</span><strong>${Number(metrics.precision || 0).toFixed(3)} / ${Number(metrics.recall || 0).toFixed(3)} / ${Number(metrics.f1 || 0).toFixed(3)}</strong></div>
+        <div class="kv"><span>Security Coverage</span><strong>${Number(metrics.security_coverage || 0).toFixed(3)}</strong></div>
+      `;
+    }
+
+    function renderNodes(report) {
+      currentNodes = report.nodes || [];
+      nodesEl.innerHTML = '';
+      currentNodes.forEach((node) => {
+        const row = document.createElement('div');
+        row.className = 'node-row';
+        const findings = (node.linter_findings || []).length;
+        const reviews = (node.reviews || []).length;
+        row.textContent = `${node.module_id} | findings:${findings} reviews:${reviews} status:${node.status}`;
+        row.addEventListener('click', () => {
+          moduleDetailEl.textContent = JSON.stringify(node, null, 2);
+        });
+        nodesEl.appendChild(row);
+      });
+    }
+
+    async function selectResult(result, itemEl) {
+      document.querySelectorAll('.result-item').forEach((el) => el.classList.remove('active'));
+      itemEl.classList.add('active');
+
+      statusEl.textContent = `Loading ${result.report_path}...`;
+      viewerTitle.textContent = result.report_title;
+      graphFrame.src = result.graph_html_url || '';
+      reportJsonLink.href = result.report_json_url;
+
+      const res = await fetch(`/ui/result?report_path=${encodeURIComponent(result.report_path)}`);
+      if (!res.ok) {
+        statusEl.textContent = `Failed to load report detail: ${res.status}`;
+        return;
+      }
+
+      const detail = await res.json();
+      renderDiagnostics(detail.connectivity, detail.report.metrics || {});
+      renderSchema(detail.db_columns || {});
+      renderNodes(detail.report || {});
+      moduleDetailEl.textContent = 'Select a module to inspect report fields, findings, and reviews.';
+      statusEl.textContent = `Loaded ${result.report_path}`;
+    }
+
+    async function init() {
+      try {
+        const res = await fetch('/ui/results');
+        if (!res.ok) {
+          statusEl.textContent = `Failed to load results: ${res.status}`;
+          return;
+        }
+        const results = await res.json();
+        renderResultList(results);
+        statusEl.textContent = `Found ${results.length} report set(s)`;
+      } catch (err) {
+        statusEl.textContent = `Failed to load UI: ${String(err)}`;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1144 @@
+{
+  "edges": [
+    {
+      "edge_type": "explicit_import",
+      "import_line": "import cart",
+      "source": "checkout",
+      "target": "cart",
+      "weight": 1.0
+    },
+    {
+      "edge_type": "explicit_import",
+      "import_line": "import payments",
+      "source": "checkout",
+      "target": "payments",
+      "weight": 1.0
+    }
+  ],
+  "episode_id": null,
+  "metrics": {
+    "confidence_score": 0.8250000000000001,
+    "consistency": 1.0,
+    "dependency_attribution_validity": 1.0,
+    "f1": 0.5,
+    "false_negatives": 0,
+    "false_positives": 14,
+    "precision": 0.3333333333333333,
+    "recall": 1.0,
+    "security_coverage": 1.0,
+    "severity_weighted_coverage": 1.0,
+    "true_positives": 7
+  },
+  "nodes": [
+    {
+      "linter_findings": [
+        {
+          "code": "C0116",
+          "id": 544,
+          "line": 6,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "C0116",
+          "id": 545,
+          "line": 13,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "cart",
+      "module_shape": "functions=calculate_subtotal, calculate_total",
+      "name": "cart",
+      "reviews": [
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.322850",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.620562",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:47.350046",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.324877",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.622270",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:47.352492",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.327013",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 13",
+            "matched_finding_id": 545,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.624212",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 13",
+            "matched_finding_id": 545,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:47.354540",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 13",
+            "matched_finding_id": 545,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.328982",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.625917",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:47.357562",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 544,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4
+        },
+        {
+          "action_type": "FLAG_DEPENDENCY_ISSUE",
+          "attributed_to": "checkout",
+          "created_at": "2026-04-07T15:39:02.332013",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_DEPENDENCY_ISSUE",
+            "feedback": "Judge disabled by configuration; graph-consistent attribution accepted",
+            "matched_finding_id": null,
+            "metadata": {
+              "judge_model": "gemma4:e4b",
+              "judge_provider": "ollama_openai_compat",
+              "judge_score": 1.0,
+              "prompt_hash": "051619961f826e8e162673ff26aeccf2da8048caf07b322bf40026bf5333ddf7",
+              "temperature": 0.0
+            },
+            "normalized_reward": 0.8,
+            "raw_reward": 0.6,
+            "reward_reason": "correct_dependency_attribution"
+          },
+          "reward_given": 0.6,
+          "step_number": 5
+        },
+        {
+          "action_type": "FLAG_DEPENDENCY_ISSUE",
+          "attributed_to": "checkout",
+          "created_at": "2026-04-07T15:42:28.627632",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_DEPENDENCY_ISSUE",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 5
+        },
+        {
+          "action_type": "FLAG_DEPENDENCY_ISSUE",
+          "attributed_to": "checkout",
+          "created_at": "2026-04-07T15:45:48.853926",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_DEPENDENCY_ISSUE",
+            "feedback": "The review comment suggests a 'Potential upstream dependency contribution' from 'checkout' to 'cart'. However, the provided context only shows the current module is 'cart' and the attribution is to 'checkout'. Without seeing the actual code or the nature of the dependency, it is impossible to confirm if 'checkout' is the root cause of an issue found in 'cart'. The attribution is unsupported.",
+            "matched_finding_id": null,
+            "metadata": {
+              "judge_model": "gemma4:e4b",
+              "judge_provider": "ollama_openai_compat",
+              "judge_score": 0.0,
+              "prompt_hash": "051619961f826e8e162673ff26aeccf2da8048caf07b322bf40026bf5333ddf7",
+              "temperature": 0.0
+            },
+            "normalized_reward": 0.55,
+            "raw_reward": 0.1,
+            "reward_reason": "incorrect_dependency_attribution"
+          },
+          "reward_given": 0.1,
+          "step_number": 5
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.333943",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 6
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.629241",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 6
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:48.856915",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 6
+        }
+      ],
+      "security_findings": [],
+      "status": "changes_requested",
+      "summary": "exports: [calculate_subtotal(items: list[dict[str, float]])->float, calculate_total(items: list[dict[str, float]])->float] | issues: 2 | depends_on: [config]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "C0116",
+          "id": 546,
+          "line": 7,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "checkout",
+      "module_shape": "functions=submit_order",
+      "name": "checkout",
+      "reviews": [
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.336712",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 7",
+            "matched_finding_id": 546,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.631973",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 7",
+            "matched_finding_id": 546,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:48.859469",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 7",
+            "matched_finding_id": 546,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.338684",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 7",
+            "matched_finding_id": 546,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.634100",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 7",
+            "matched_finding_id": 546,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:48.861214",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 7",
+            "matched_finding_id": 546,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:02.340730",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 3
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.635957",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 3
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:48.862966",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 3
+        }
+      ],
+      "security_findings": [],
+      "status": "changes_requested",
+      "summary": "exports: [submit_order(items: list[dict[str, float]])->str] | issues: 1 | depends_on: [cart, payments]"
+    },
+    {
+      "linter_findings": [
+        {
+          "code": "B404",
+          "id": 606,
+          "line": 3,
+          "message": "Consider possible security implications associated with the subprocess module.",
+          "severity": "low",
+          "tool": "bandit"
+        },
+        {
+          "code": "C0116",
+          "id": 607,
+          "line": 6,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "code": "B602",
+          "id": 608,
+          "line": 9,
+          "message": "subprocess call with shell=True identified, security issue.",
+          "severity": "high",
+          "tool": "bandit"
+        },
+        {
+          "code": "C0116",
+          "id": 609,
+          "line": 12,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "payments",
+      "module_shape": "functions=run_gateway_check, charge",
+      "name": "payments",
+      "reviews": [
+        {
+          "action_type": "FLAG_SECURITY",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.944905",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_SECURITY",
+            "feedback": "Matched finding bandit:B404 at line 3",
+            "matched_finding_id": 606,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "FLAG_SECURITY",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.258609",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_SECURITY",
+            "feedback": "Matched finding bandit:B404 at line 3",
+            "matched_finding_id": 606,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "FLAG_SECURITY",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.072346",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_SECURITY",
+            "feedback": "Matched finding bandit:B404 at line 3",
+            "matched_finding_id": 606,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.946984",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 3",
+            "matched_finding_id": 606,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.260347",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 3",
+            "matched_finding_id": 606,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.076166",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 3",
+            "matched_finding_id": 606,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.948899",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.262109",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.078029",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.950696",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.263987",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.079940",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4
+        },
+        {
+          "action_type": "FLAG_SECURITY",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.952582",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_SECURITY",
+            "feedback": "Matched finding bandit:B602 at line 9",
+            "matched_finding_id": 608,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 5
+        },
+        {
+          "action_type": "FLAG_SECURITY",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.265841",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_SECURITY",
+            "feedback": "Matched finding bandit:B602 at line 9",
+            "matched_finding_id": 608,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 5
+        },
+        {
+          "action_type": "FLAG_SECURITY",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.081506",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_SECURITY",
+            "feedback": "Matched finding bandit:B602 at line 9",
+            "matched_finding_id": 608,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 5
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.955058",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 9",
+            "matched_finding_id": 608,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 6
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.267673",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 9",
+            "matched_finding_id": 608,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 6
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.083747",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 9",
+            "matched_finding_id": 608,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 6
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.956810",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 12",
+            "matched_finding_id": 609,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 7
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.269813",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 12",
+            "matched_finding_id": 609,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 7
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.085833",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 12",
+            "matched_finding_id": 609,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 7
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.958722",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 8
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.276331",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 8
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:41.087644",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 6",
+            "matched_finding_id": 607,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 8
+        },
+        {
+          "action_type": "FLAG_DEPENDENCY_ISSUE",
+          "attributed_to": "checkout",
+          "created_at": "2026-04-07T15:39:01.960609",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_DEPENDENCY_ISSUE",
+            "feedback": "Judge disabled by configuration; graph-consistent attribution accepted",
+            "matched_finding_id": null,
+            "metadata": {
+              "judge_model": "gemma4:e4b",
+              "judge_provider": "ollama_openai_compat",
+              "judge_score": 1.0,
+              "prompt_hash": "051619961f826e8e162673ff26aeccf2da8048caf07b322bf40026bf5333ddf7",
+              "temperature": 0.0
+            },
+            "normalized_reward": 0.8,
+            "raw_reward": 0.6,
+            "reward_reason": "correct_dependency_attribution"
+          },
+          "reward_given": 0.6,
+          "step_number": 9
+        },
+        {
+          "action_type": "FLAG_DEPENDENCY_ISSUE",
+          "attributed_to": "checkout",
+          "created_at": "2026-04-07T15:42:28.278296",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_DEPENDENCY_ISSUE",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 9
+        },
+        {
+          "action_type": "FLAG_DEPENDENCY_ISSUE",
+          "attributed_to": "checkout",
+          "created_at": "2026-04-07T15:45:47.338935",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_DEPENDENCY_ISSUE",
+            "feedback": "The comment suggests a 'Potential upstream dependency contribution' from 'checkout' to 'payments'. This indicates a possible dependency relationship, but without seeing the code or the specific failure, it's impossible to confirm if 'checkout' is the *root cause* of an issue in 'payments'. The attribution is suggestive but not definitively proven.",
+            "matched_finding_id": null,
+            "metadata": {
+              "judge_model": "gemma4:e4b",
+              "judge_provider": "ollama_openai_compat",
+              "judge_score": 0.5,
+              "prompt_hash": "051619961f826e8e162673ff26aeccf2da8048caf07b322bf40026bf5333ddf7",
+              "temperature": 0.0
+            },
+            "normalized_reward": 0.8,
+            "raw_reward": 0.6,
+            "reward_reason": "correct_dependency_attribution"
+          },
+          "reward_given": 0.6,
+          "step_number": 9
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:39:01.963207",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 10
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:42:28.280144",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 10
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "created_at": "2026-04-07T15:45:47.347133",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 10
+        }
+      ],
+      "security_findings": [
+        {
+          "code": "B404",
+          "line": 3,
+          "message": "Consider possible security implications associated with the subprocess module.",
+          "severity": "low"
+        },
+        {
+          "code": "B602",
+          "line": 9,
+          "message": "subprocess call with shell=True identified, security issue.",
+          "severity": "high"
+        }
+      ],
+      "status": "changes_requested",
+      "summary": "exports: [run_gateway_check(endpoint: str)->int, charge(total: float)->str] | issues: 4 | depends_on: [subprocess]"
+    }
+  ],
+  "report_schema_version": "1.0.0",
+  "rl_integrity": {
+    "deterministic_replay_notes": "easy/medium deterministic by construction; hard uses judge with temperature=0",
+    "reward_causality_tracked": true,
+    "trajectory_reconstructable": true
+  },
+  "scope_modules": [
+    "cart",
+    "checkout",
+    "payments"
+  ],
+  "source_root": "/home/lightdesk/Downloads/Projects/NodeAudit/code-review-env/sample_project"
+}

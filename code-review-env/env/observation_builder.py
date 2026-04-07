@@ -49,6 +49,24 @@ class ObservationBuilder:
 			return {"text": ast_summary}
 		return loaded if isinstance(loaded, dict) else {"items": loaded}
 
+	def _module_context_summary(
+		self,
+		node: ModuleNode,
+		dependencies: list[str],
+		dependents: list[str],
+	) -> str:
+		findings = self.graph_manager.store.get_findings(node.module_id)
+		security_count = sum(1 for finding in findings if finding.tool == "bandit")
+		high_severity = sum(1 for finding in findings if finding.severity.value == "high")
+		parts = [
+			node.summary or node.ast_summary,
+			f"related_dependencies={', '.join(dependencies[:5]) or 'none'}",
+			f"related_dependents={', '.join(dependents[:3]) or 'none'}",
+			f"security_findings={security_count}",
+			f"high_severity_findings={high_severity}",
+		]
+		return " | ".join(parts)
+
 	def build(
 		self,
 		module_id: str,
@@ -142,7 +160,7 @@ class ObservationBuilder:
 		return CodeObservation(
 			module_id=module_id,
 			code=str(budgeted.payload.get("code", "")),
-			module_summary=node.summary or node.ast_summary,
+			module_summary=self._module_context_summary(node, dep_ranked, dependent_ranked),
 			ast_summary=self._ast_summary_payload(str(budgeted.payload.get("ast_summary_text", ""))),
 			dependency_summaries=dependency_summaries_bounded,
 			dependent_summaries=dependent_summaries_bounded,
