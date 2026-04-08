@@ -1,5 +1,5 @@
 ---
-title: GraphReview — Graph-Aware Code Review RL Environment
+title: NodeAudit — Graph-Aware Code Review RL Environment
 emoji: 🔍
 colorFrom: blue
 colorTo: green
@@ -14,7 +14,7 @@ tags:
   - rl-environment
 ---
 
-# GraphReview — Graph-Aware Code Review RL Environment
+# NodeAudit — Graph-Aware Code Review RL Environment
 
 ## 1. Title + Badges
 
@@ -24,13 +24,13 @@ tags:
 ![HF Space](https://img.shields.io/badge/HuggingFace-Space-fcc72b)
 ![Docker Build](https://img.shields.io/badge/Docker-Buildable-2496ED?logo=docker&logoColor=white)
 
-GraphReview is an OpenEnv-compatible RL environment for dependency-aware code review where agents must reason about upstream causes before deciding downstream review actions.
+NodeAudit is an OpenEnv-compatible RL environment for dependency-aware code review where agents must reason about upstream causes before deciding downstream review actions.
 
 Hugging Face Space: https://huggingface.co/spaces/Athmabhiram1/nodeaudit-openenv
 
 ## 2. Overview
 
-GraphReview simulates multi-file Python code review in a realistic setting where bugs and security risks propagate through imports and call paths. This is hard for AI agents because a local-looking defect in one module can be a symptom of a root cause in another module, and the agent must decide when to request context versus when to act under token limits. Unlike tools like CodeRabbit that review mostly in local diff context, this environment explicitly exposes dependency and dependent summaries so agents can reason about why a module behaves incorrectly before flagging it. A trained agent outputs structured review actions over episodes, then produces a fully annotated dependency graph with module-level review status, per-step rewards, and attribution links.
+NodeAudit simulates multi-file Python code review in a realistic setting where bugs and security risks propagate through imports and call paths. This is hard for AI agents because a local-looking defect in one module can be a symptom of a root cause in another module, and the agent must decide when to request context versus when to act under token limits. Unlike tools like CodeRabbit that review mostly in local diff context, this environment explicitly exposes dependency and dependent summaries so agents can reason about why a module behaves incorrectly before flagging it. A trained agent outputs structured review actions over episodes, then produces a fully annotated dependency graph with module-level review status, per-step rewards, and attribution links.
 
 ## 3. The RL Loop
 
@@ -42,7 +42,7 @@ Define the environment as an episodic MDP $(S, O, A, R, P)$.
 - Observation space $O$: `CodeObservation` from `env/observation.py`, token-budget constrained to `MAX_TOTAL_TOKENS=2000` by `graph/token_budget.py`, including current module code, AST summary, ranked dependency/dependent summaries, neighbor review snippets, available actions, optional requested context.
 - Action space $A$: `ReviewAction` in `env/action.py` with `ActionType` in {`FLAG_STYLE`, `FLAG_BUG`, `FLAG_SECURITY`, `FLAG_DEPENDENCY_ISSUE`, `ADD_COMMENT`, `REQUEST_CONTEXT`, `REQUEST_CHANGES`, `APPROVE`, `AMEND_REVIEW`} plus typed fields (`target_line`, `content`, `attributed_to`, `context_request`).
 - Reward function $R$: Deterministic reward reasons in `env/reward.py` mapped by `RAW_REWARD_TABLE` and emitted by graders (`easy`, `medium`, `hard`) through `ReviewReward`.
-- Episode boundaries: `reset(task_id=...)` creates episode/module records and returns first observation. In `step()`, `done=True` when module list is exhausted or when `step_count >= max(task.max_steps, GRAPHREVIEW_MAX_STEPS_PER_EPISODE)`.
+- Episode boundaries: `reset(task_id=...)` creates episode/module records and returns first observation. In `step()`, `done=True` when module list is exhausted or when `step_count >= max(task.max_steps, NodeAudit_MAX_STEPS_PER_EPISODE)`.
 
 ### 3.2 The Step Loop
 
@@ -313,9 +313,9 @@ When to use each action:
 
 End-of-run artifacts (default prefix from report generator is configurable):
 
-- `graphreview_report.json`: machine-readable graph, findings, reviews, metrics.
-- `graphreview_report.md`: module-by-module review narrative and attribution summary.
-- `graphreview_graph.html`: interactive Pyvis dependency graph.
+- `NodeAudit_report.json`: machine-readable graph, findings, reviews, metrics.
+- `NodeAudit_report.md`: module-by-module review narrative and attribution summary.
+- `NodeAudit_graph.html`: interactive Pyvis dependency graph.
 
 Visualization semantics from `visualizer/pyvis_renderer.py` and report generator:
 
@@ -326,7 +326,7 @@ Visualization semantics from `visualizer/pyvis_renderer.py` and report generator
 - Edge colors:
     blue `explicit_import`, orange `implicit_dependency`, red `circular`, teal `intra_file`
 - Click behavior:
-    node click posts `graphreview-node-select` message with module id to parent UI for review panel sync.
+    node click posts `NodeAudit-node-select` message with module id to parent UI for review panel sync.
 
 Why this differs from CodeRabbit: annotations persist in the graph database, attribution links can cross modules, and output is a full codebase dependency map with review state rather than isolated PR comments.
 
@@ -343,8 +343,8 @@ Why this differs from CodeRabbit: annotations persist in the graph database, att
 
 ```bash
 # Step 1: Clone
-git clone https://huggingface.co/spaces/YOUR_USERNAME/graphreview-env
-cd graphreview-env
+git clone https://huggingface.co/spaces/YOUR_USERNAME/NodeAudit-env
+cd NodeAudit-env
 
 # Step 2: Install dependencies
 pip install -r requirements.txt
@@ -365,12 +365,12 @@ curl -X POST http://localhost:8000/reset -H "Content-Type: application/json" \
 ### 9.3 Docker
 
 ```bash
-docker build -t graphreview-env:latest .
+docker build -t NodeAudit-env:latest .
 docker run --rm -p 8000:7860 \
   -e API_BASE_URL=https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Coder-7B-Instruct/v1 \
   -e MODEL_NAME=Qwen/Qwen2.5-Coder-7B-Instruct \
   -e HF_TOKEN=your_token \
-  graphreview-env:latest
+  NodeAudit-env:latest
 ```
 
 Verify with the same curl commands above, targeting `http://localhost:8000`.
@@ -493,9 +493,9 @@ code-review-env/
 │   ├── lora_adapter.py                     # Trajectory logging and LoRA hooks
 │   └── lora_finetune.py                    # LoRA fine-tuning utilities
 ├── outputs/
-│   ├── graphreview_full_graph.html         # Full graph visualization artifact
-│   ├── graphreview_full_report.json        # Full machine-readable report
-│   ├── graphreview_full_report.md          # Full markdown summary report
+│   ├── NodeAudit_full_graph.html         # Full graph visualization artifact
+│   ├── NodeAudit_full_report.json        # Full machine-readable report
+│   ├── NodeAudit_full_report.md          # Full markdown summary report
 │   ├── openenv_real/
 │   │   ├── openenv_real_phase5_graph.html  # OpenEnv real-run graph artifact
 │   │   ├── openenv_real_phase5_report.json # OpenEnv real-run JSON report
@@ -622,7 +622,7 @@ code-review-env/
 
 ## 15. Comparison with Existing Tools
 
-| Capability | CodeRabbit | Traditional Linters | GraphReview (This) |
+| Capability | CodeRabbit | Traditional Linters | NodeAudit (This) |
 |---|---|---|---|
 | Graph-aware review | Partial (diff-local context) | No | Yes — full dependency graph |
 | Cascade attribution | No | No | Yes — explicit `attributed_to` graph-linked scoring |
@@ -630,7 +630,7 @@ code-review-env/
 | Annotated output | PR comments | CLI findings | Annotated dependency graph + JSON/MD/HTML reports |
 | Agent learns over time | No | No | Yes — trajectory logs + reward shaping |
 
-Graph-awareness changes review quality because downstream symptoms can be scored with upstream evidence. Example from the sample project: `auth.py` or `config.py` can induce invalid downstream behavior in `checkout.py`; a local-only reviewer flags `checkout.py` symptoms but misses root cause attribution. GraphReview exposes upstream/downstream context before action selection and rewards correct attribution.
+Graph-awareness changes review quality because downstream symptoms can be scored with upstream evidence. Example from the sample project: `auth.py` or `config.py` can induce invalid downstream behavior in `checkout.py`; a local-only reviewer flags `checkout.py` symptoms but misses root cause attribution. NodeAudit exposes upstream/downstream context before action selection and rewards correct attribution.
 
 ## 16. License
 
