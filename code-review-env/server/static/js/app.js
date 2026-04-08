@@ -26,6 +26,34 @@ const runAnalysisOutputEl = document.getElementById('runAnalysisOutput');
 let currentNodes = [];
 let selectedModuleId = '';
 
+function applyGraphTooltipStyles() {
+  const frameDoc = graphFrame?.contentDocument;
+  if (!frameDoc) {
+    return;
+  }
+
+  if (frameDoc.getElementById('graphreview-tooltip-style')) {
+    return;
+  }
+
+  const style = frameDoc.createElement('style');
+  style.id = 'graphreview-tooltip-style';
+  style.textContent = `
+    .vis-tooltip,
+    .vis-network-tooltip {
+      max-width: 420px !important;
+      white-space: pre-wrap !important;
+      overflow-wrap: anywhere !important;
+      word-break: break-word !important;
+      line-height: 1.35 !important;
+    }
+  `;
+
+  frameDoc.head?.appendChild(style);
+}
+
+graphFrame?.addEventListener('load', applyGraphTooltipStyles);
+
 function fmtPct(value) {
   return `${(Number(value || 0) * 100).toFixed(1)}%`;
 }
