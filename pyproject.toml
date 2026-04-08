@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nodeaudit-openenv"
+version = "0.1.0"
+description = "Root submission package for NodeAudit OpenEnv GraphReview"
+requires-python = ">=3.11"
+dependencies = [
+    "openenv-core>=0.2.3",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+server = "server.app:main"

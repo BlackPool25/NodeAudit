@@ -1,393 +1,311 @@
 from __future__ import annotations
 
-import argparse
-from datetime import UTC, datetime
 import json
 import os
-from pathlib import Path
-import uuid
+import sys
+from dataclasses import dataclass
+from typing import Any
+from urllib import error as urlerror
+from urllib import request as urlrequest
 
 from openai import OpenAI
 
-from db.seed import seed_project
-from db.store import Store
-from env.runtime_config import load_runtime_config
-from parser.semantic_checks import detect_semantic_issues
-from training.run_manager import TrainingRunManager
-from training.weights import WeightSafetyManager
+from inference_training import main as training_main
 
 
 # Submission-required runtime variables.
-HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HFTOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
-# Hosted fallback: if HF_TOKEN exists and endpoint/model are not explicitly provided,
-# use Hugging Face Router with a stable instruct model.
-if HF_TOKEN and not os.getenv("API_BASE_URL") and not os.getenv("GRAPHREVIEW_LLM_BASE_URL"):
-    API_BASE_URL = "https://router.huggingface.co/v1"
-else:
-    API_BASE_URL = os.getenv("API_BASE_URL", os.getenv("GRAPHREVIEW_LLM_BASE_URL", "http://localhost:11434/v1"))
-
-if HF_TOKEN and not os.getenv("MODEL_NAME"):
-    MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-else:
-    MODEL_NAME = os.getenv("MODEL_NAME", "gemma4:e4b")
-
-# Keep current behavior for local Ollama while supporting hosted providers via HF_TOKEN.
-API_KEY = HF_TOKEN or os.getenv("GRAPHREVIEW_LLM_API_KEY", "ollama")
+# GraphReview defaults.
+BENCHMARK = os.getenv("GRAPHREVIEW_BENCHMARK", "graphreview")
+ENV_BASE_URL = os.getenv("GRAPHREVIEW_BASE_URL", "http://127.0.0.1:7860")
+TASKS = [
+    item.strip()
+    for item in os.getenv("GRAPHREVIEW_TASKS", "style_review,logic_review,cascade_review").split(",")
+    if item.strip()
+]
+MAX_STEPS = int(os.getenv("GRAPHREVIEW_MAX_EPISODE_STEPS", "24"))
+TEMPERATURE = float(os.getenv("GRAPHREVIEW_INFER_TEMPERATURE", "0.2"))
+MAX_TOKENS = int(os.getenv("GRAPHREVIEW_INFER_MAX_TOKENS", "180"))
+SUCCESS_SCORE_THRESHOLD = float(os.getenv("GRAPHREVIEW_SUCCESS_THRESHOLD", "0.5"))
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="GraphReview deterministic inference/training harness")
-    parser.add_argument("target", help="Path to target Python project")
-    parser.add_argument("--db-path", default=None, help="Optional DB path")
-    parser.add_argument("--force-seed", action="store_true", help="Force re-seed")
-    parser.add_argument(
-        "--register-weights",
-        action="store_true",
-        help="Register model weights and write verification manifest",
-    )
-    parser.add_argument(
-        "--deterministic-output",
-        default="outputs/training/deterministic_findings.jsonl",
-        help="Path to write normalized deterministic findings",
-    )
-    parser.add_argument("--baseline-precision", type=float, default=None, help="Optional precision floor baseline")
-    parser.add_argument("--baseline-recall", type=float, default=None, help="Optional recall floor baseline")
-    parser.add_argument(
-        "--regression-tolerance",
-        type=float,
-        default=0.01,
-        help="Allowed drop from baseline precision/recall",
-    )
-    return parser
+@dataclass
+class ReviewAction:
+    action_type: str
+    target_line: int | None = None
+    content: str | None = None
+    attributed_to: str | None = None
+    context_request: str | None = None
 
 
-def _finding_key(analyzer: str, module_id: str, rule_id: str, line: int) -> str:
-    return f"{analyzer}:{module_id}:{rule_id}:{line}"
+@dataclass
+class GraphReviewObservation:
+    module_id: str
+    code: str
+    task_description: str
+    available_actions: list[str]
 
 
-def _target_key(module_id: str, line: int) -> str:
-    return f"{module_id}:{line}"
+@dataclass
+class GraphReviewStepResult:
+    observation: GraphReviewObservation
+    reward: float
+    done: bool
 
 
-def _safe_float(raw: str | None, default: float) -> float:
-    if raw is None:
-        return default
-    try:
-        return float(raw)
-    except ValueError:
-        return default
+class GraphReviewClient:
+    def __init__(self, base_url: str) -> None:
+        self.base_url = base_url.rstrip("/")
 
+    def _step_payload(self, action: ReviewAction) -> dict[str, object]:
+        payload: dict[str, object] = {"action_type": action.action_type}
+        if action.target_line is not None:
+            payload["target_line"] = action.target_line
+        if action.content:
+            payload["content"] = action.content
+        if action.attributed_to:
+            payload["attributed_to"] = action.attributed_to
+        if action.context_request:
+            payload["context_request"] = action.context_request
+        return {"action": payload}
 
-def _build_agent_prompt(module_id: str, code: str, ast_summary: str) -> str:
-    return (
-        "You are reviewing one Python module in a dependency-aware code review environment. "
-        "Do not rely on prior analyzer findings because they are hidden from you. "
-        "Find concrete, actionable issues only, with line numbers and confidence.\n\n"
-        "Your objectives are:\n"
-        "1) Identify real bug, security, or dependency-risk issues in the provided code.\n"
-        "2) Prefer deterministic evidence over speculative style feedback.\n"
-        "3) If you suspect cascade risk, explain likely upstream/downstream impact in rationale.\n"
-        "4) Return strictly valid JSON matching this schema: "
-        "{\"findings\": [{\"line\": int, \"category\": \"bug|security|dependency\", \"rule_hint\": str, \"message\": str, \"confidence\": float}]}.\n\n"
-        f"Module: {module_id}\n"
-        f"AST Summary: {ast_summary}\n"
-        "Code:\n"
-        f"{code}\n"
-    )
-
-
-def _extract_agent_findings(store: Store, config) -> set[str]:
-    model = MODEL_NAME
-    base_url = API_BASE_URL
-    api_key = API_KEY
-    enabled = os.getenv("GRAPHREVIEW_AGENT_INFERENCE_ENABLED", "true").strip().lower() == "true"
-
-    findings: set[str] = set()
-    node_snapshot = store.get_full_graph().nodes
-    use_llm = enabled and base_url and model
-    client = OpenAI(api_key=api_key, base_url=base_url, timeout=12.0) if use_llm else None
-
-    llm_enabled = client is not None
-    if llm_enabled:
+    def _request_json(self, path: str, payload: dict[str, object]) -> dict[str, Any]:
+        body = json.dumps(payload).encode("utf-8")
+        req = urlrequest.Request(
+            f"{self.base_url}{path}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
-            models = client.models.list()
-            available = {item.id for item in models.data if getattr(item, "id", None)}
-            if model not in available:
-                print(
-                    f"[STEP] agent_llm_disabled reason=model-not-found model={model} "
-                    f"available_count={len(available)}"
-                )
-                llm_enabled = False
-        except Exception as exc:
-            print(f"[STEP] agent_llm_disabled reason=model-list-failed error={type(exc).__name__}")
-            llm_enabled = False
+            with urlrequest.urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+        except urlerror.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore")
+            raise RuntimeError(f"HTTP {exc.code}: {detail}") from exc
+        except urlerror.URLError as exc:
+            raise RuntimeError(f"Connection error: {exc.reason}") from exc
 
-    for node in node_snapshot:
-        node_row = store.get_node(node.module_id)
-        if node_row is None:
-            continue
+    def _parse_result(self, payload: dict[str, Any]) -> GraphReviewStepResult:
+        obs = payload.get("observation", {})
+        return GraphReviewStepResult(
+            observation=GraphReviewObservation(
+                module_id=str(obs.get("module_id", "unknown")),
+                code=str(obs.get("code", "")),
+                task_description=str(obs.get("task_description", "")),
+                available_actions=list(obs.get("available_actions", [])),
+            ),
+            reward=float(payload.get("reward", 0.0) or 0.0),
+            done=bool(payload.get("done", False)),
+        )
 
-        module_id = node_row.module_id
-        code = node_row.raw_code
-        ast_summary = node_row.ast_summary
-        collected = False
+    def reset(self, task_id: str) -> GraphReviewStepResult:
+        return self._parse_result(self._request_json("/reset", {"task_id": task_id}))
 
-        if llm_enabled and client is not None:
-            prompt = _build_agent_prompt(module_id=module_id, code=code, ast_summary=ast_summary)
+    def step(self, action: ReviewAction) -> GraphReviewStepResult:
+        return self._parse_result(self._request_json("/step", self._step_payload(action)))
+
+    def close(self) -> None:
+        return None
+
+
+def _is_training_mode(argv: list[str]) -> bool:
+    # Keep backward compatibility for existing training endpoints that pass a target path.
+    return any(not arg.startswith("-") for arg in argv[1:])
+
+
+def log_start(task: str, env: str, model: str) -> None:
+    print(f"[START] task={task} env={env} model={model}", flush=True)
+
+
+def log_step(step: int, action: str, reward: float, done: bool, error: str | None) -> None:
+    action_one_line = action.replace("\n", " ").replace("\r", " ").strip()
+    error_val = error if error else "null"
+    print(
+        f"[STEP] step={step} action={action_one_line} reward={reward:.2f} "
+        f"done={str(done).lower()} error={error_val}",
+        flush=True,
+    )
+
+
+def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> None:
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        flush=True,
+    )
+
+
+def _build_prompt(observation: GraphReviewObservation, step: int) -> str:
+    code = observation.code[:2200]
+    actions = ", ".join(observation.available_actions) if observation.available_actions else "APPROVE"
+    return (
+        "You are reviewing Python code in GraphReview. Return only compact JSON with keys: "
+        "action_type, target_line (optional int), content (optional string), "
+        "attributed_to (optional string), context_request (optional string).\n"
+        f"Step: {step}\n"
+        f"Module: {observation.module_id}\n"
+        f"Task: {observation.task_description}\n"
+        f"Available actions: {actions}\n"
+        "Prefer concrete bug/security/dependency findings over style comments.\n"
+        "If uncertain, use REQUEST_CONTEXT or ADD_COMMENT instead of hallucinating.\n"
+        f"Code:\n{code}"
+    )
+
+
+def _fallback_action(observation: GraphReviewObservation, step: int) -> ReviewAction:
+    if "REQUEST_CONTEXT" in observation.available_actions and step <= 2:
+        return ReviewAction(action_type="REQUEST_CONTEXT", context_request="upstream dependency module")
+    if "ADD_COMMENT" in observation.available_actions:
+        return ReviewAction(
+            action_type="ADD_COMMENT",
+            target_line=1,
+            content="Potential issue requires confirmation from dependency context.",
+        )
+    if "REQUEST_CHANGES" in observation.available_actions:
+        return ReviewAction(action_type="REQUEST_CHANGES")
+    return ReviewAction(action_type="APPROVE")
+
+
+def _action_to_log_string(action: ReviewAction) -> str:
+    parts = [f"action_type={action.action_type}"]
+    if action.target_line is not None:
+        parts.append(f"target_line={action.target_line}")
+    if action.content:
+        parts.append(f"content={action.content[:90]}")
+    if action.attributed_to:
+        parts.append(f"attributed_to={action.attributed_to}")
+    if action.context_request:
+        parts.append(f"context_request={action.context_request}")
+    return ";".join(parts)
+
+
+def _propose_action(client: OpenAI, observation: GraphReviewObservation, step: int) -> ReviewAction:
+    prompt = _build_prompt(observation=observation, step=step)
+    completion = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": "Return valid JSON only. No markdown."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=TEMPERATURE,
+        max_tokens=MAX_TOKENS,
+        stream=False,
+    )
+    text = (completion.choices[0].message.content or "{}").strip()
+    payload = json.loads(text)
+    if not isinstance(payload, dict):
+        return _fallback_action(observation=observation, step=step)
+
+    action_type = str(payload.get("action_type", "")).strip().upper()
+    if not action_type:
+        return _fallback_action(observation=observation, step=step)
+
+    if observation.available_actions and action_type not in observation.available_actions:
+        return _fallback_action(observation=observation, step=step)
+
+    target_line_raw = payload.get("target_line")
+    target_line = None
+    if isinstance(target_line_raw, int) and target_line_raw > 0:
+        target_line = target_line_raw
+
+    return ReviewAction(
+        action_type=action_type,
+        target_line=target_line,
+        content=str(payload.get("content", "")).strip() or None,
+        attributed_to=str(payload.get("attributed_to", "")).strip() or None,
+        context_request=str(payload.get("context_request", "")).strip() or None,
+    )
+
+
+def _normalize_score(rewards: list[float]) -> float:
+    if not rewards:
+        return 0.0
+    avg = sum(rewards) / float(len(rewards))
+    # Reward scales vary by grader, so use bounded transform to keep score in [0, 1].
+    score = 1.0 / (1.0 + (2.718281828 ** (-avg)))
+    return max(0.0, min(1.0, score))
+
+
+def _build_env() -> GraphReviewClient:
+    if LOCAL_IMAGE_NAME:
+        # LOCAL_IMAGE_NAME is accepted for contract compatibility;
+        # this runner connects to the serving endpoint configured in GRAPHREVIEW_BASE_URL.
+        pass
+    return GraphReviewClient(base_url=ENV_BASE_URL)
+
+
+def _run_single_task(task_name: str, model_client: OpenAI) -> None:
+    env = _build_env()
+    rewards: list[float] = []
+    steps_taken = 0
+    score = 0.0
+    success = False
+
+    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
+    try:
+        try:
+            result = env.reset(task_id=task_name)
+        except Exception:
+            return
+
+        for step in range(1, MAX_STEPS + 1):
+            if result.done:
+                break
+
             try:
-                resp = client.chat.completions.create(
-                    model=model,
-                    temperature=0.0,
-                    response_format={"type": "json_object"},
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "Return only JSON. Do not include markdown. Keep claims concrete and line-specific.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                )
-                text = (resp.choices[0].message.content or "{}").strip()
-                payload = json.loads(text)
-                rows = payload.get("findings", []) if isinstance(payload, dict) else []
-                if isinstance(rows, list):
-                    for item in rows:
-                        if not isinstance(item, dict):
-                            continue
-                        confidence = _safe_float(str(item.get("confidence", "0.0")), 0.0)
-                        if confidence < 0.45:
-                            continue
-                        line = max(1, int(item.get("line", 1)))
-                        category = str(item.get("category", "bug")).lower()
-                        analyzer = "agent-security" if category == "security" else "agent-logic"
-                        rule_hint = str(item.get("rule_hint") or "agent")[:80]
-                        findings.add(_finding_key(analyzer, module_id, rule_hint, line))
-                    collected = True
+                action = _propose_action(model_client, result.observation, step)
+            except Exception:
+                action = _fallback_action(result.observation, step)
+
+            error: str | None = None
+            try:
+                result = env.step(action)
+                reward = float(result.reward or 0.0)
+                done = bool(result.done)
             except Exception as exc:
-                print(
-                    f"[STEP] agent_llm_disabled reason=completion-failed error={type(exc).__name__} "
-                    f"module={module_id}"
-                )
-                llm_enabled = False
-                collected = False
+                reward = 0.0
+                done = False
+                error = str(exc)
 
-        if collected:
-            continue
+            rewards.append(reward)
+            steps_taken = step
+            log_step(
+                step=step,
+                action=_action_to_log_string(action),
+                reward=reward,
+                done=done,
+                error=error,
+            )
+            if done:
+                break
 
-        # Deterministic fallback so training bootstrap still works offline.
-        for issue in detect_semantic_issues(code):
-            findings.add(_finding_key("agent-heuristic", module_id, issue.stage, max(issue.line, 1)))
+        score = _normalize_score(rewards)
+        success = score >= SUCCESS_SCORE_THRESHOLD
+    finally:
+        try:
+            env.close()
+        finally:
+            log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
-    return findings
+
+def _run_submission_mode() -> None:
+    api_key = HF_TOKEN or ""
+    model_client = OpenAI(base_url=API_BASE_URL, api_key=api_key)
+    for task in TASKS:
+        _run_single_task(task_name=task, model_client=model_client)
 
 
 def main() -> None:
-    args = _build_parser().parse_args()
-    config = load_runtime_config()
-
-    target = Path(args.target).resolve()
-    print(f"[START] target={target} model={MODEL_NAME} mode=deterministic-ground-truth")
-
-    weight_manager = WeightSafetyManager(Path(config.llm_weight_manifest_dir))
-    verified_weight_path: str | None = None
-    if args.register_weights:
-        try:
-            manifest = weight_manager.register_existing(
-                model_name=MODEL_NAME,
-                weight_path=Path(config.llm_model_agent_path),
-            )
-            print(
-                "[STEP] weights_registered "
-                + json.dumps(
-                    {
-                        "model": manifest.model_name,
-                        "sha256": manifest.sha256,
-                        "size_bytes": manifest.size_bytes,
-                    },
-                    sort_keys=True,
-                )
-            )
-        except FileNotFoundError:
-            print(
-                f"[STEP] weights_register_skipped reason=missing-local-weights model={MODEL_NAME} "
-                f"path={config.llm_model_agent_path}"
-            )
-
-    try:
-        verified_weight_path = str(weight_manager.load_verified(MODEL_NAME))
-    except FileNotFoundError:
-        try:
-            manifest = weight_manager.register_existing(
-                model_name=MODEL_NAME,
-                weight_path=Path(config.llm_model_agent_path),
-            )
-            print(
-                "[STEP] weights_registered "
-                + json.dumps(
-                    {
-                        "model": manifest.model_name,
-                        "sha256": manifest.sha256,
-                        "size_bytes": manifest.size_bytes,
-                    },
-                    sort_keys=True,
-                )
-            )
-            verified_weight_path = str(weight_manager.load_verified(MODEL_NAME))
-        except FileNotFoundError:
-            print(
-                f"[STEP] weights_unavailable reason=missing-local-weights model={MODEL_NAME} "
-                f"path={config.llm_model_agent_path}"
-            )
-
-    if verified_weight_path is not None:
-        print(f"[STEP] weights_verified path={verified_weight_path}")
-    else:
-        print("[STEP] weights_verified path=unavailable mode=api-only")
-
-    seed_result = seed_project(target_dir=target, db_path=args.db_path, force=args.force_seed)
-    print(f"[STEP] seeded {json.dumps(seed_result, sort_keys=True)}")
-
-    store = Store(source_root=str(target), db_path=args.db_path)
-    deterministic_findings = store.get_analyzer_findings()
-    deterministic_keys = {
-        _finding_key(item.analyzer, item.module_id, item.rule_id, item.line)
-        for item in deterministic_findings
-    }
-    deterministic_targets = {
-        _target_key(item.module_id, item.line)
-        for item in deterministic_findings
-    }
-
-    agent_keys = _extract_agent_findings(store=store, config=config)
-    agent_targets: set[str] = set()
-    for item in agent_keys:
-        parts = item.split(":")
-        if len(parts) < 4:
-            continue
-        module_id = parts[1]
-        try:
-            line = int(parts[-1])
-        except ValueError:
-            continue
-        agent_targets.add(_target_key(module_id, line))
-
-    manager = TrainingRunManager()
-    comparison = manager.compare(deterministic_findings=deterministic_targets, agent_findings=agent_targets)
-
-    records: list[dict[str, object]] = []
-    for finding in deterministic_findings:
-        records.append(
-            manager.build_preference_record(
-                prompt=(
-                    "Review the module and detect concrete bugs, security issues, and "
-                    "dependency-attributed cascade problems without relying on prior findings."
-                ),
-                agent_output="",
-                deterministic_targets=[
-                    _finding_key(
-                        finding.analyzer,
-                        finding.module_id,
-                        finding.rule_id,
-                        finding.line,
-                    )
-                ],
-                reward=0.0,
-            )
-        )
-
-    output_path = Path(args.deterministic_output)
-    manager.save_records(output_path, records)
-
-    baseline_precision = args.baseline_precision
-    baseline_recall = args.baseline_recall
-    prior_runs = store.list_training_runs(limit=100)
-    if baseline_precision is None and prior_runs:
-        baseline_precision = max(item.precision for item in prior_runs)
-    if baseline_recall is None and prior_runs:
-        baseline_recall = max(item.recall for item in prior_runs)
-
-    passed_non_regression = True
-    if baseline_precision is not None and baseline_recall is not None:
-        manager.assert_non_regression(
-            baseline_precision=baseline_precision,
-            baseline_recall=baseline_recall,
-            current_precision=comparison.precision,
-            current_recall=comparison.recall,
-            tolerance=args.regression_tolerance,
-        )
-        print(
-            "[STEP] non_regression_guard "
-            + json.dumps(
-                {
-                    "baseline_precision": baseline_precision,
-                    "baseline_recall": baseline_recall,
-                    "tolerance": args.regression_tolerance,
-                },
-                sort_keys=True,
-            )
-        )
-    print(
-        "[STEP] training_dataset "
-        + json.dumps(
-            {
-                "output": str(output_path),
-                "records": len(records),
-                "precision": comparison.precision,
-                "recall": comparison.recall,
-                "false_negatives": comparison.false_negatives,
-            },
-            sort_keys=True,
-        )
-    )
-
-    run_id = f"tr-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
-    run_config = {
-        "target": str(target),
-        "model": MODEL_NAME,
-        "model_path": config.llm_model_agent_path,
-        "agent_inference_enabled": os.getenv("GRAPHREVIEW_AGENT_INFERENCE_ENABLED", "true"),
-        "regression_tolerance": args.regression_tolerance,
-        "baseline_precision": baseline_precision,
-        "baseline_recall": baseline_recall,
-    }
-    sha256 = "unavailable"
-    if verified_weight_path is not None:
-        sha256 = weight_manager.checksum(Path(verified_weight_path))
-    store.create_training_run(
-        run_id=run_id,
-        model_name=MODEL_NAME,
-        model_sha256=sha256,
-        deterministic_findings=len(deterministic_keys),
-        agent_findings=len(agent_keys),
-        true_positives=comparison.true_positives,
-        false_positives=comparison.false_positives,
-        false_negatives=comparison.false_negatives,
-        precision=comparison.precision,
-        recall=comparison.recall,
-        passed_non_regression=passed_non_regression,
-        output_path=str(output_path),
-        run_config_json=json.dumps(run_config, sort_keys=True),
-    )
-    print(f"[STEP] training_run_id={run_id}")
-
-    print(
-        "[END] "
-        + json.dumps(
-            {
-                "ok": True,
-                "deterministic_findings": len(deterministic_findings),
-                "agent_findings": len(agent_keys),
-                "model_weight": verified_weight_path or "unavailable",
-                "model": MODEL_NAME,
-                "precision": comparison.precision,
-                "recall": comparison.recall,
-                "run_id": run_id,
-            },
-            sort_keys=True,
-        )
-    )
+    if _is_training_mode(sys.argv):
+        training_main()
+        return
+    _run_submission_mode()
 
 
 if __name__ == "__main__":
