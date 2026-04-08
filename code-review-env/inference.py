@@ -17,6 +17,16 @@ from training.run_manager import TrainingRunManager
 from training.weights import WeightSafetyManager
 
 
+# Submission-required runtime variables.
+API_BASE_URL = os.getenv("API_BASE_URL", os.getenv("GRAPHREVIEW_LLM_BASE_URL", "http://localhost:11434/v1"))
+MODEL_NAME = os.getenv("MODEL_NAME", "gemma4:e4b")
+HF_TOKEN = os.getenv("HF_TOKEN")
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+
+# Keep current behavior for local Ollama while supporting future hosted providers via HF_TOKEN.
+API_KEY = HF_TOKEN or os.getenv("GRAPHREVIEW_LLM_API_KEY", "ollama")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="GraphReview deterministic inference/training harness")
     parser.add_argument("target", help="Path to target Python project")
@@ -79,9 +89,9 @@ def _build_agent_prompt(module_id: str, code: str, ast_summary: str) -> str:
 
 
 def _extract_agent_findings(store: Store, config) -> set[str]:
-    model = config.llm_model_training
-    base_url = config.llm_base_url
-    api_key = config.llm_api_key
+    model = MODEL_NAME
+    base_url = API_BASE_URL
+    api_key = API_KEY
     enabled = os.getenv("GRAPHREVIEW_AGENT_INFERENCE_ENABLED", "true").strip().lower() == "true"
 
     findings: set[str] = set()
@@ -166,49 +176,65 @@ def _extract_agent_findings(store: Store, config) -> set[str]:
 def main() -> None:
     args = _build_parser().parse_args()
     config = load_runtime_config()
-    model_name = os.getenv("MODEL_NAME", "gemma4:e4b")
 
     target = Path(args.target).resolve()
-    print(f"[START] target={target} model={config.llm_model_training} mode=deterministic-ground-truth")
+    print(f"[START] target={target} model={MODEL_NAME} mode=deterministic-ground-truth")
 
     weight_manager = WeightSafetyManager(Path(config.llm_weight_manifest_dir))
+    verified_weight_path: str | None = None
     if args.register_weights:
-        manifest = weight_manager.register_existing(
-            model_name=model_name,
-            weight_path=Path(config.llm_model_agent_path),
-        )
-        print(
-            "[STEP] weights_registered "
-            + json.dumps(
-                {
-                    "model": manifest.model_name,
-                    "sha256": manifest.sha256,
-                    "size_bytes": manifest.size_bytes,
-                },
-                sort_keys=True,
+        try:
+            manifest = weight_manager.register_existing(
+                model_name=MODEL_NAME,
+                weight_path=Path(config.llm_model_agent_path),
             )
-        )
+            print(
+                "[STEP] weights_registered "
+                + json.dumps(
+                    {
+                        "model": manifest.model_name,
+                        "sha256": manifest.sha256,
+                        "size_bytes": manifest.size_bytes,
+                    },
+                    sort_keys=True,
+                )
+            )
+        except FileNotFoundError:
+            print(
+                f"[STEP] weights_register_skipped reason=missing-local-weights model={MODEL_NAME} "
+                f"path={config.llm_model_agent_path}"
+            )
 
     try:
-        verified_weight_path = weight_manager.load_verified(model_name)
+        verified_weight_path = str(weight_manager.load_verified(MODEL_NAME))
     except FileNotFoundError:
-        manifest = weight_manager.register_existing(
-            model_name=model_name,
-            weight_path=Path(config.llm_model_agent_path),
-        )
-        print(
-            "[STEP] weights_registered "
-            + json.dumps(
-                {
-                    "model": manifest.model_name,
-                    "sha256": manifest.sha256,
-                    "size_bytes": manifest.size_bytes,
-                },
-                sort_keys=True,
+        try:
+            manifest = weight_manager.register_existing(
+                model_name=MODEL_NAME,
+                weight_path=Path(config.llm_model_agent_path),
             )
-        )
-        verified_weight_path = weight_manager.load_verified(model_name)
-    print(f"[STEP] weights_verified path={verified_weight_path}")
+            print(
+                "[STEP] weights_registered "
+                + json.dumps(
+                    {
+                        "model": manifest.model_name,
+                        "sha256": manifest.sha256,
+                        "size_bytes": manifest.size_bytes,
+                    },
+                    sort_keys=True,
+                )
+            )
+            verified_weight_path = str(weight_manager.load_verified(MODEL_NAME))
+        except FileNotFoundError:
+            print(
+                f"[STEP] weights_unavailable reason=missing-local-weights model={MODEL_NAME} "
+                f"path={config.llm_model_agent_path}"
+            )
+
+    if verified_weight_path is not None:
+        print(f"[STEP] weights_verified path={verified_weight_path}")
+    else:
+        print("[STEP] weights_verified path=unavailable mode=api-only")
 
     seed_result = seed_project(target_dir=target, db_path=args.db_path, force=args.force_seed)
     print(f"[STEP] seeded {json.dumps(seed_result, sort_keys=True)}")
@@ -309,17 +335,19 @@ def main() -> None:
     run_id = f"tr-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}"
     run_config = {
         "target": str(target),
-        "model": config.llm_model_agent,
+        "model": MODEL_NAME,
         "model_path": config.llm_model_agent_path,
         "agent_inference_enabled": os.getenv("GRAPHREVIEW_AGENT_INFERENCE_ENABLED", "true"),
         "regression_tolerance": args.regression_tolerance,
         "baseline_precision": baseline_precision,
         "baseline_recall": baseline_recall,
     }
-    sha256 = weight_manager.checksum(Path(verified_weight_path))
+    sha256 = "unavailable"
+    if verified_weight_path is not None:
+        sha256 = weight_manager.checksum(Path(verified_weight_path))
     store.create_training_run(
         run_id=run_id,
-        model_name=config.llm_model_training,
+        model_name=MODEL_NAME,
         model_sha256=sha256,
         deterministic_findings=len(deterministic_keys),
         agent_findings=len(agent_keys),
@@ -341,8 +369,8 @@ def main() -> None:
                 "ok": True,
                 "deterministic_findings": len(deterministic_findings),
                 "agent_findings": len(agent_keys),
-                "model_weight": str(verified_weight_path),
-                "model": config.llm_model_training,
+                "model_weight": verified_weight_path or "unavailable",
+                "model": MODEL_NAME,
                 "precision": comparison.precision,
                 "recall": comparison.recall,
                 "run_id": run_id,
