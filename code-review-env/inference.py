@@ -18,12 +18,22 @@ from training.weights import WeightSafetyManager
 
 
 # Submission-required runtime variables.
-API_BASE_URL = os.getenv("API_BASE_URL", os.getenv("GRAPHREVIEW_LLM_BASE_URL", "http://localhost:11434/v1"))
-MODEL_NAME = os.getenv("MODEL_NAME", "gemma4:e4b")
 HF_TOKEN = os.getenv("HF_TOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
-# Keep current behavior for local Ollama while supporting future hosted providers via HF_TOKEN.
+# Hosted fallback: if HF_TOKEN exists and endpoint/model are not explicitly provided,
+# use Hugging Face Router with a stable instruct model.
+if HF_TOKEN and not os.getenv("API_BASE_URL") and not os.getenv("GRAPHREVIEW_LLM_BASE_URL"):
+    API_BASE_URL = "https://router.huggingface.co/v1"
+else:
+    API_BASE_URL = os.getenv("API_BASE_URL", os.getenv("GRAPHREVIEW_LLM_BASE_URL", "http://localhost:11434/v1"))
+
+if HF_TOKEN and not os.getenv("MODEL_NAME"):
+    MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+else:
+    MODEL_NAME = os.getenv("MODEL_NAME", "gemma4:e4b")
+
+# Keep current behavior for local Ollama while supporting hosted providers via HF_TOKEN.
 API_KEY = HF_TOKEN or os.getenv("GRAPHREVIEW_LLM_API_KEY", "ollama")
 
 
