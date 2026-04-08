@@ -695,7 +695,10 @@ def bootstrap_training() -> TrainingBootstrapResponse:
 			pass
 
 	manager = TrainingRunManager()
-	deterministic = STORE.get_analyzer_findings()
+	try:
+		deterministic = STORE.get_analyzer_findings()
+	except Exception:
+		deterministic = []
 	deterministic_keys = {
 		f"{item.analyzer}:{item.module_id}:{item.rule_id}:{item.line}"
 		for item in deterministic
