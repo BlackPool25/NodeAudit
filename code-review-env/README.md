@@ -1,3 +1,13 @@
+---
+title: NodeAudit OpenEnv
+emoji: "🧠"
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # GraphReview — Dependency-Aware RL Environment for Python Code Review
 
 GraphReview is an OpenEnv-compliant reinforcement learning environment where an LLM
