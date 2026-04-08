@@ -21,7 +21,7 @@ tags:
 ![OpenEnv Validate](https://img.shields.io/badge/openenv_validate-pass-brightgreen)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-Apache%202.0-2ea44f)
-![HF Space](https://img.shields.io/badge/HuggingFace-Space-fcc72b)
+[![HF Space](https://img.shields.io/badge/HuggingFace-Space-fcc72b)](https://huggingface.co/spaces/Athmabhiram1/nodeaudit-openenv)
 ![Docker Build](https://img.shields.io/badge/Docker-Buildable-2496ED?logo=docker&logoColor=white)
 
 NodeAudit is an OpenEnv-compatible RL environment for dependency-aware code review where agents must reason about upstream causes before deciding downstream review actions.
