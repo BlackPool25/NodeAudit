@@ -80,16 +80,16 @@ flowchart TD
     C --> D[Graph Builder]
     D --> E[SQLite DB]
     E --> F[Graph Manager]
-    F --> G[reset()]
+    F --> G["reset()"]
     G --> H[Observation Builder]
     H --> I[Agent]
-    I --> J[step(action)]
+    I --> J["step(action)"]
     J --> K[Grader]
     K --> L[Reward]
     L --> M[Review Annotation]
     M --> E
-    E --> N[state()]
-    N --> O[Pyvis Graph + Markdown Report]
+    E --> N["state()"]
+    N --> O["Pyvis Graph + Markdown Report"]
 ```
 
 ### 4.2 Module Descriptions
