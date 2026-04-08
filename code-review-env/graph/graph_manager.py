@@ -57,6 +57,7 @@ class GraphManager:
                 edge_type=edge.edge_type.value,
                 import_line=edge.import_line,
                 weight=edge.weight,
+                connection_summary=edge.connection_summary,
             )
 
         self._graph_cache = graph

@@ -53,6 +53,7 @@ class ModuleEdge(SQLModel, table=True):
     edge_type: EdgeType = Field(default=EdgeType.EXPLICIT_IMPORT)
     import_line: str
     weight: float = 1.0
+    connection_summary: str = ""
 
 
 class LinterFinding(SQLModel, table=True):

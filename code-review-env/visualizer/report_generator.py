@@ -347,6 +347,7 @@ def _build_json_payload(
             "edge_type": edge.edge_type.value,
             "weight": edge.weight,
             "import_line": edge.import_line,
+            "connection_summary": edge.connection_summary,
         }
         for edge in sorted(edges, key=lambda item: (item.source_module_id, item.target_module_id, item.import_line))
     ]
@@ -562,7 +563,9 @@ def generate_phase5_outputs(
                 "target": edge.target_module_id,
                 "edge_type": edge.edge_type.value,
                 "weight": edge.weight,
-                "title": f"{edge.edge_type.value}: {edge.import_line}",
+                "title": (
+                    f"{edge.edge_type.value}: {edge.connection_summary or edge.import_line}"
+                ),
             }
         )
 

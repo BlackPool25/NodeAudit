@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from db.schema import EdgeType
 from db.store import Store
+from llm.edge_summarizer import EdgeSummarizer, EdgeSummaryInput
 from parser.linter import run_linters
 from parser.summarizer import summarize_module
 
@@ -205,6 +206,7 @@ def parse_directory(target_dir: Path, db_path: str | None = None) -> Store:
     py_files = _iter_python_files(target_dir)
     parsed_modules = [parse_python_file(py_file, target_dir) for py_file in py_files]
     known_module_ids = {parsed.module_id for parsed in parsed_modules}
+    edge_summarizer = EdgeSummarizer()
 
     for py_file, parsed in zip(py_files, parsed_modules):
         issues = run_linters(py_file)
@@ -223,12 +225,22 @@ def parse_directory(target_dir: Path, db_path: str | None = None) -> Store:
         )
         for imported in parsed.imports:
             if imported.target_module and imported.target_module in known_module_ids:
+                connection_summary = edge_summarizer.summarize(
+                    EdgeSummaryInput(
+                        source_module_id=parsed.module_id,
+                        target_module_id=imported.target_module,
+                        edge_type=imported.edge_type.value,
+                        import_line=imported.import_line,
+                        scope=imported.scope,
+                    )
+                )
                 store.upsert_edge(
                     source_module_id=parsed.module_id,
                     target_module_id=imported.target_module,
                     edge_type=imported.edge_type,
                     import_line=imported.import_line,
                     weight=imported.weight,
+                    connection_summary=connection_summary,
                 )
 
     return store

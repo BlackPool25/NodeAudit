@@ -93,7 +93,9 @@ def test_hard_grader_dependency_attribution(tmp_path: Path) -> None:
     graph = GraphManager(source_root=str(project), db_path=str(db_path))
     grader = HardGrader(store, graph)
 
-    grader._judge_dependency_reasoning = lambda module_id, action: (1.0, "ok", "hash")  # type: ignore[method-assign]
+    grader._judge_with_model = (  # type: ignore[method-assign]
+        lambda module_id, action, model, provider, base_url, api_key, timeout, system_prompt, cache_scope: (1.0, "ok")
+    )
 
     good = grader.grade_episode(
         module_id="a",

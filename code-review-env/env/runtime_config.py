@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from env.env_loader import load_env_file
+
 
 @dataclass(frozen=True)
 class RuntimeConfig:
@@ -15,6 +17,7 @@ class RuntimeConfig:
 
 
 def load_runtime_config() -> RuntimeConfig:
+    load_env_file()
     return RuntimeConfig(
         llm_provider=os.getenv("GRAPHREVIEW_LLM_PROVIDER", "ollama_openai_compat"),
         llm_base_url=os.getenv("GRAPHREVIEW_LLM_BASE_URL", "http://localhost:11434/v1"),

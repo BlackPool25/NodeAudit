@@ -38,21 +38,36 @@ class HardGrader(MediumGrader):
 			"GRAPHREVIEW_JUDGE_PROVIDER",
 			"ollama_openai_compat",
 		)
+		self.verifier_provider = os.getenv("GRAPHREVIEW_VERIFIER_PROVIDER", self.judge_provider)
 		self.base_url = os.getenv("GRAPHREVIEW_JUDGE_BASE_URL", "http://localhost:11434/v1")
+		self.verifier_base_url = os.getenv("GRAPHREVIEW_VERIFIER_BASE_URL", self.base_url)
 		self.api_key = os.getenv("GRAPHREVIEW_JUDGE_API_KEY", "ollama")
+		self.verifier_api_key = os.getenv("GRAPHREVIEW_VERIFIER_API_KEY", self.api_key)
 		self.timeout = float(os.getenv("GRAPHREVIEW_JUDGE_TIMEOUT_SECONDS", "8"))
+		self.verifier_timeout = float(os.getenv("GRAPHREVIEW_VERIFIER_TIMEOUT_SECONDS", str(self.timeout)))
 		self.judge_system_prompt = os.getenv(
 			"GRAPHREVIEW_JUDGE_SYSTEM_PROMPT",
+			self.DEFAULT_JUDGE_SYSTEM_PROMPT,
+		)
+		self.verifier_enabled = os.getenv("GRAPHREVIEW_VERIFIER_ENABLED", "true").strip().lower() == "true"
+		self.verifier_model = os.getenv("GRAPHREVIEW_VERIFIER_MODEL", self.judge_model)
+		self.verifier_system_prompt = os.getenv(
+			"GRAPHREVIEW_VERIFIER_SYSTEM_PROMPT",
 			self.DEFAULT_JUDGE_SYSTEM_PROMPT,
 		)
 		self.reasoning_effort = os.getenv("GRAPHREVIEW_JUDGE_REASONING_EFFORT", "none")
 		self.think_value = os.getenv("GRAPHREVIEW_JUDGE_THINK", "false").strip().lower()
 		self.max_judge_calls = int(os.getenv("GRAPHREVIEW_JUDGE_MAX_CALLS", "200"))
 		self.max_consecutive_failures = int(os.getenv("GRAPHREVIEW_JUDGE_MAX_CONSECUTIVE_FAILURES", "3"))
+		self.weight_deterministic = float(os.getenv("GRAPHREVIEW_JUDGE_WEIGHT_DETERMINISTIC", "0.5"))
+		self.weight_primary = float(os.getenv("GRAPHREVIEW_JUDGE_WEIGHT_PRIMARY", "0.3"))
+		self.weight_verifier = float(os.getenv("GRAPHREVIEW_JUDGE_WEIGHT_VERIFIER", "0.2"))
+		self.disagreement_threshold = float(os.getenv("GRAPHREVIEW_JUDGE_DISAGREEMENT_THRESHOLD", "0.5"))
 		self._judge_calls = 0
 		self._consecutive_failures = 0
 		self._judge_cache: dict[str, tuple[float, str]] = {}
 		self.prompt_hash = hashlib.sha256(self.judge_system_prompt.encode("utf-8")).hexdigest()
+		self.verifier_prompt_hash = hashlib.sha256(self.verifier_system_prompt.encode("utf-8")).hexdigest()
 
 	def grade_action(
 		self,
@@ -95,39 +110,91 @@ class HardGrader(MediumGrader):
 			)
 
 		normalized_action = action.model_copy(update={"attributed_to": attributed_to})
-		judge_result = self._judge_dependency_reasoning(module_id, normalized_action)
-		if len(judge_result) == 2:
-			judge_score, explanation = judge_result
-		else:
-			judge_score, explanation = judge_result[0], judge_result[1]
-		if judge_score <= 0.0:
+		primary_score, primary_explanation = self._judge_with_model(
+			module_id=module_id,
+			action=normalized_action,
+			model=self.judge_model,
+			provider=self.judge_provider,
+			base_url=self.base_url,
+			api_key=self.api_key,
+			timeout=self.timeout,
+			system_prompt=self.judge_system_prompt,
+			cache_scope="primary",
+		)
+		verifier_score = primary_score
+		verifier_explanation = "Verifier disabled"
+		if self.verifier_enabled:
+			verifier_score, verifier_explanation = self._judge_with_model(
+				module_id=module_id,
+				action=normalized_action,
+				model=self.verifier_model,
+				provider=self.verifier_provider,
+				base_url=self.verifier_base_url,
+				api_key=self.verifier_api_key,
+				timeout=self.verifier_timeout,
+				system_prompt=self.verifier_system_prompt,
+				cache_scope="verifier",
+			)
+
+		final_score, blend = self._blend_scores(
+			deterministic_score=1.0,
+			primary_score=primary_score,
+			verifier_score=verifier_score,
+		)
+
+		if final_score < 0.45:
 			return make_reward(
 				RewardReason.INCORRECT_DEPENDENCY_ATTRIBUTION,
-				explanation,
+				f"{primary_explanation} | verifier: {verifier_explanation}",
 				metadata={
-					"judge_score": judge_score,
+					"judge_score": primary_score,
+					"verifier_score": verifier_score,
+					"final_score": final_score,
+					"blend": json.dumps(blend, sort_keys=True),
 					"judge_provider": self.judge_provider,
 					"judge_model": self.judge_model,
+					"verifier_provider": self.verifier_provider,
+					"verifier_model": self.verifier_model,
 					"temperature": 0.0,
 					"prompt_hash": self.prompt_hash,
+					"verifier_prompt_hash": self.verifier_prompt_hash,
 				},
 			)
 
 		base_reason = RewardReason.CORRECT_DEPENDENCY_ATTRIBUTION
+		if final_score < 0.75:
+			base_reason = RewardReason.PARTIAL_DEPENDENCY_ATTRIBUTION
 		reward = make_reward(
 			base_reason,
-			explanation,
+			f"{primary_explanation} | verifier: {verifier_explanation}",
 			metadata={
-				"judge_score": judge_score,
+				"judge_score": primary_score,
+				"verifier_score": verifier_score,
+				"final_score": final_score,
+				"blend": json.dumps(blend, sort_keys=True),
 				"judge_provider": self.judge_provider,
 				"judge_model": self.judge_model,
+				"verifier_provider": self.verifier_provider,
+				"verifier_model": self.verifier_model,
 				"temperature": 0.0,
 				"prompt_hash": self.prompt_hash,
+				"verifier_prompt_hash": self.verifier_prompt_hash,
 			},
 		)
 		return reward
 
-	def _judge_dependency_reasoning(self, module_id: str, action: ReviewAction) -> tuple[float, str]:
+	def _judge_with_model(
+		self,
+		module_id: str,
+		action: ReviewAction,
+		model: str,
+		provider: str,
+		base_url: str,
+		api_key: str,
+		timeout: float,
+		system_prompt: str,
+		cache_scope: str,
+	) -> tuple[float, str]:
 		if not self.judge_enabled:
 			return 1.0, "Judge disabled by configuration; graph-consistent attribution accepted"
 
@@ -145,21 +212,21 @@ class HardGrader(MediumGrader):
 			"rubric": "0.0 wrong or unsupported; 0.5 partially justified; 1.0 well-justified root cause",
 		}
 		payload_text = json.dumps(payload, sort_keys=True)
-		cache_key = hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
+		cache_key = hashlib.sha256(f"{cache_scope}:{model}:{payload_text}".encode("utf-8")).hexdigest()
 		cached = self._judge_cache.get(cache_key)
 		if cached is not None:
 			return cached
 
 		try:
 			self._judge_calls += 1
-			client = OpenAI(api_key=self.api_key, base_url=self.base_url, timeout=self.timeout)
+			client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
 
 			request_kwargs: dict[str, Any] = {
-				"model": self.judge_model,
+				"model": model,
 				"temperature": 0.0,
 				"response_format": {"type": "json_object"},
 				"messages": [
-					{"role": "system", "content": self.judge_system_prompt},
+					{"role": "system", "content": system_prompt},
 					{"role": "user", "content": payload_text},
 				],
 			}
@@ -167,7 +234,7 @@ class HardGrader(MediumGrader):
 			if self.reasoning_effort in {"none", "low", "medium", "high"}:
 				request_kwargs["reasoning_effort"] = self.reasoning_effort
 
-			if self.judge_provider == "ollama_openai_compat":
+			if provider == "ollama_openai_compat":
 				if self.think_value in {"true", "false", "low", "medium", "high"}:
 					think: bool | str
 					if self.think_value in {"low", "medium", "high"}:
@@ -206,3 +273,43 @@ class HardGrader(MediumGrader):
 			if start >= 0 and end > start:
 				return json.loads(text[start : end + 1])
 			raise
+
+	def _blend_scores(
+		self,
+		deterministic_score: float,
+		primary_score: float,
+		verifier_score: float,
+	) -> tuple[float, dict[str, float | bool]]:
+		d = max(0.0, min(1.0, deterministic_score))
+		p = max(0.0, min(1.0, primary_score))
+		v = max(0.0, min(1.0, verifier_score))
+
+		wd = max(self.weight_deterministic, 0.0)
+		wp = max(self.weight_primary, 0.0)
+		wv = max(self.weight_verifier, 0.0)
+		disagreement = abs(p - v)
+		disagreement_guard = disagreement >= self.disagreement_threshold
+		if disagreement_guard:
+			wp = min(wp, 0.1)
+			wv = max(wv, 0.4)
+			wd = max(wd, 0.5)
+
+		total = wd + wp + wv
+		if total <= 0:
+			return 0.0, {"wd": 0.0, "wp": 0.0, "wv": 0.0, "disagreement": disagreement, "guard": disagreement_guard}
+
+		wd /= total
+		wp /= total
+		wv /= total
+
+		final = (wd * d) + (wp * p) + (wv * v)
+		if p == 1.0 and v == 0.0:
+			final = min(final, 0.45)
+
+		return final, {
+			"wd": wd,
+			"wp": wp,
+			"wv": wv,
+			"disagreement": disagreement,
+			"guard": disagreement_guard,
+		}

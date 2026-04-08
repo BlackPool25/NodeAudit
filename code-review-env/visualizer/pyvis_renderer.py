@@ -54,12 +54,19 @@ def render_graph_html(
 
     for edge in edges:
         edge_type = str(edge.get("edge_type", "explicit_import"))
+        edge_title = str(edge.get("title", edge_type))
+        formatted_title = (
+            "<div style='max-width:360px'>"
+            f"<b>{edge_type}</b><br>{edge_title}"
+            "</div>"
+        )
         net.add_edge(
             source=str(edge["source"]),
             to=str(edge["target"]),
-            title=str(edge.get("title", edge_type)),
+            title=formatted_title,
             color=EDGE_COLORS.get(edge_type, EDGE_COLORS["explicit_import"]),
-            value=max(float(edge.get("weight", 1.0)), 0.2),
+            value=1.0,
+            width=max(1.0, min(float(edge.get("weight", 1.0)) * 1.3, 2.2)),
             arrows="to",
         )
 
@@ -85,7 +92,7 @@ def render_graph_html(
                 },
                 "edges": {
                     "smooth": {"enabled": False},
-                    "arrows": {"to": {"enabled": True, "scaleFactor": 0.5}},
+                    "arrows": {"to": {"enabled": True, "scaleFactor": 0.35}},
                 },
             }
         )

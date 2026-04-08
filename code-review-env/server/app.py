@@ -14,11 +14,14 @@ from sqlmodel import Session, select
 
 from db.schema import ModuleEdge, ModuleNode
 from db.store import Store
+from env.env_loader import load_env_file
 from env.action import ActionType, ReviewAction
 from env.environment import CodeReviewEnv, StepResult
 from env.observation import CodeObservation
 from env.state import GraphState
 from visualizer.report_generator import GeneratedArtifacts, generate_phase5_outputs
+
+load_env_file()
 
 
 class ResetRequest(BaseModel):
@@ -297,6 +300,7 @@ def ui_result(report_path: str = Query(..., min_length=1)) -> ResultDetail:
 				"edge_type",
 				"import_line",
 				"weight",
+				"connection_summary",
 			],
 		},
 	)

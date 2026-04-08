@@ -14,6 +14,7 @@ from parser.chunker import chunk_module
 from parser.graph_builder import build_edges
 from parser.linter import run_linters
 from parser.summarizer import summarize_module
+from llm.edge_summarizer import EdgeSummarizer, EdgeSummaryInput
 
 
 _SKIP_DIRS = {
@@ -160,13 +161,24 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
         store.replace_findings_for_module(parsed.module_id, [issue.model_dump() for issue in issues])
 
     edges = build_edges(parsed_modules, module_ids, chunk_ids_by_parent)
+    edge_summarizer = EdgeSummarizer()
     for edge in edges:
+        connection_summary = edge_summarizer.summarize(
+            EdgeSummaryInput(
+                source_module_id=edge.source_module_id,
+                target_module_id=edge.target_module_id,
+                edge_type=edge.edge_type.value,
+                import_line=edge.import_line,
+                scope=edge.scope,
+            )
+        )
         store.upsert_edge(
             source_module_id=edge.source_module_id,
             target_module_id=edge.target_module_id,
             edge_type=edge.edge_type,
             import_line=edge.import_line,
             weight=edge.weight,
+            connection_summary=connection_summary,
         )
 
     snapshot = store.get_full_graph()

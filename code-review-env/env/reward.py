@@ -9,6 +9,7 @@ class RewardReason(StrEnum):
 	CORRECT_FLAG = "correct_flag"
 	ACCURATE_COMMENT = "accurate_comment"
 	CORRECT_DEPENDENCY_ATTRIBUTION = "correct_dependency_attribution"
+	PARTIAL_DEPENDENCY_ATTRIBUTION = "partial_dependency_attribution"
 	INCORRECT_DEPENDENCY_ATTRIBUTION = "incorrect_dependency_attribution"
 	CORRECT_AMENDMENT = "correct_amendment"
 	REQUEST_CONTEXT_COST = "request_context_cost"
@@ -23,6 +24,7 @@ RAW_REWARD_TABLE: dict[RewardReason, float] = {
 	RewardReason.CORRECT_FLAG: 0.5,
 	RewardReason.ACCURATE_COMMENT: 0.3,
 	RewardReason.CORRECT_DEPENDENCY_ATTRIBUTION: 0.6,
+	RewardReason.PARTIAL_DEPENDENCY_ATTRIBUTION: 0.35,
 	RewardReason.INCORRECT_DEPENDENCY_ATTRIBUTION: 0.1,
 	RewardReason.CORRECT_AMENDMENT: 0.4,
 	RewardReason.REQUEST_CONTEXT_COST: -0.1,

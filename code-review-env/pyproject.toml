@@ -16,6 +16,7 @@ dependencies = [
 
 [project.scripts]
 server = "server.app:main"
+graphreview = "run_project:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -54,6 +54,7 @@ class GraphEdgeRecord(BaseModel):
     target_module_id: str
     weight: float
     import_line: str
+    connection_summary: str
 
 
 class GraphSnapshot(BaseModel):
@@ -133,6 +134,7 @@ class Store:
         edge_type: EdgeType,
         import_line: str,
         weight: float,
+        connection_summary: str = "",
     ) -> ModuleEdge:
         with Session(self.engine) as session:
             existing = session.exec(
@@ -146,6 +148,7 @@ class Store:
             if existing:
                 existing.edge_type = edge_type
                 existing.weight = weight
+                existing.connection_summary = connection_summary or existing.connection_summary
                 session.add(existing)
                 session.commit()
                 session.refresh(existing)
@@ -158,6 +161,7 @@ class Store:
                 edge_type=edge_type,
                 import_line=import_line,
                 weight=weight,
+                connection_summary=connection_summary,
             )
             session.add(edge)
             session.commit()
@@ -337,6 +341,7 @@ class Store:
                     target_module_id=edge.target_module_id,
                     weight=edge.weight,
                     import_line=edge.import_line,
+                    connection_summary=edge.connection_summary,
                 )
                 for edge in edges
             ],

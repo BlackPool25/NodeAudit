@@ -15,6 +15,7 @@ class EdgeRecord(BaseModel):
     import_line: str
     scope: str
     weight: float
+    connection_summary: str = ""
 
 
 def _build_intra_file_edges(parsed: ParsedModule, available_chunk_ids: set[str]) -> list[EdgeRecord]:

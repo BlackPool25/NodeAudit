@@ -6,6 +6,8 @@ from pathlib import Path
 from sqlmodel import SQLModel, create_engine
 from sqlalchemy import inspect, text
 
+from env.env_loader import load_env_file
+
 
 def get_default_db_path() -> Path:
     project_root = Path(__file__).resolve().parents[1]
@@ -13,6 +15,7 @@ def get_default_db_path() -> Path:
 
 
 def get_engine(db_path: str | Path | None = None, echo: bool = False):
+    load_env_file()
     env_url = os.getenv("GRAPHREVIEW_DATABASE_URL", "").strip()
     if env_url:
         connect_args: dict[str, object] = {}
@@ -43,6 +46,7 @@ def get_engine(db_path: str | Path | None = None, echo: bool = False):
 
 
 def init_db(db_path: str | Path | None = None, echo: bool = False) -> None:
+    load_env_file()
     from db import schema  # noqa: F401
 
     engine = get_engine(db_path=db_path, echo=echo)
@@ -65,6 +69,14 @@ def _apply_lightweight_migrations(engine) -> None:
         add_statements.append("ALTER TABLE reviewannotation ADD COLUMN attributed_to TEXT")
     if "is_amendment" not in existing_columns:
         add_statements.append("ALTER TABLE reviewannotation ADD COLUMN is_amendment BOOLEAN DEFAULT 0")
+
+    if not add_statements:
+        add_statements = []
+
+    if "moduleedge" in inspector.get_table_names():
+        edge_columns = {col["name"] for col in inspector.get_columns("moduleedge")}
+        if "connection_summary" not in edge_columns:
+            add_statements.append("ALTER TABLE moduleedge ADD COLUMN connection_summary TEXT DEFAULT ''")
 
     if not add_statements:
         return

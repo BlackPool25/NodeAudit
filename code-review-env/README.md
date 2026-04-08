@@ -35,6 +35,14 @@ Phase 5:
 - Added confidence scoring that balances precision/recall with severity/security coverage and attribution validity.
 - Added API endpoint to generate artifacts and CLI support for real project runs.
 
+Phase 6:
+
+- Added adaptive hard-grader fusion: deterministic graph gate + primary judge + verifier judge.
+- Added disagreement-aware reweighting to reduce single-model catastrophic errors.
+- Added per-edge `connection_summary` generation using LLM with deterministic fallback.
+- Added optional LoRA trajectory logging for cross-project learning data collection.
+- Added root `.env` support for centralized configuration management.
+
 ## Core Runtime Components
 
 - `env/environment.py`
@@ -105,6 +113,8 @@ with `auth_token` connect arg.
 
 ## LLM and Runtime Env Vars
 
+`.env` at project root is auto-loaded by runtime configuration, DB initialization, and server startup.
+
 Judge settings:
 
 - `GRAPHREVIEW_JUDGE_PROVIDER` (default `ollama_openai_compat`)
@@ -116,6 +126,39 @@ Judge settings:
 - `GRAPHREVIEW_JUDGE_MAX_CALLS` (default `200`)
 - `GRAPHREVIEW_JUDGE_MAX_CONSECUTIVE_FAILURES` (default `3`)
 - `GRAPHREVIEW_JUDGE_THINK` (`false|true|low|medium|high`, default `false`)
+
+Verifier and adaptive fusion settings:
+
+- `GRAPHREVIEW_VERIFIER_ENABLED` (default `true`)
+- `GRAPHREVIEW_VERIFIER_PROVIDER`
+- `GRAPHREVIEW_VERIFIER_MODEL`
+- `GRAPHREVIEW_VERIFIER_BASE_URL`
+- `GRAPHREVIEW_VERIFIER_API_KEY`
+- `GRAPHREVIEW_VERIFIER_TIMEOUT_SECONDS`
+- `GRAPHREVIEW_JUDGE_WEIGHT_DETERMINISTIC` (default `0.5`)
+- `GRAPHREVIEW_JUDGE_WEIGHT_PRIMARY` (default `0.3`)
+- `GRAPHREVIEW_JUDGE_WEIGHT_VERIFIER` (default `0.2`)
+- `GRAPHREVIEW_JUDGE_DISAGREEMENT_THRESHOLD` (default `0.5`)
+
+Edge summary settings:
+
+- `GRAPHREVIEW_EDGE_SUMMARY_ENABLED` (default `false`, enable when you want LLM edge summaries)
+- `GRAPHREVIEW_EDGE_SUMMARY_MODEL`
+- `GRAPHREVIEW_EDGE_SUMMARY_BASE_URL`
+- `GRAPHREVIEW_EDGE_SUMMARY_API_KEY`
+- `GRAPHREVIEW_EDGE_SUMMARY_TIMEOUT_SECONDS`
+- `GRAPHREVIEW_EDGE_SUMMARY_MAX_CALLS`
+
+LoRA trajectory hooks:
+
+- `GRAPHREVIEW_LORA_ENABLED` (default `false`)
+- `GRAPHREVIEW_LORA_DATA_PATH` (default `outputs/lora/transitions.jsonl`)
+
+Generate a LoRA-ready SFT dataset from transitions:
+
+```bash
+python -m llm.lora_finetune --transitions outputs/lora/transitions.jsonl --output outputs/lora/sft_dataset.jsonl
+```
 
 General runtime settings:
 
@@ -141,6 +184,26 @@ Run API smoke checks:
 ```bash
 curl -s http://localhost:8000/health
 curl -s http://localhost:8000/tasks
+```
+
+## Unified One-Command Runner
+
+Run seed + easy/medium/hard reviews + artifact generation on any target codebase:
+
+```bash
+graphreview /absolute/path/to/your/codebase --force-seed
+```
+
+Equivalent without installing entrypoints:
+
+```bash
+python run_project.py /absolute/path/to/your/codebase --force-seed
+```
+
+Optional focused run:
+
+```bash
+graphreview /absolute/path/to/your/codebase --modules checkout auth --filter-hops 1 --report-prefix myrun
 ```
 
 ## Direct Module Review (Phase 4)

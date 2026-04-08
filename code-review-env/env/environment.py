@@ -21,6 +21,7 @@ from graders.base_grader import BaseGrader
 from graders.easy_grader import EasyGrader
 from graders.hard_grader import HardGrader
 from graders.medium_grader import MediumGrader
+from llm.lora_adapter import LoRATrajectoryLogger
 from tasks.task_registry import TaskSpec, get_task, list_tasks, resolve_task_modules
 
 
@@ -80,6 +81,7 @@ class CodeReviewEnv:
         self.store = Store(source_root=self.source_root, db_path=self.db_path)
         self.graph_manager = GraphManager(source_root=self.source_root, db_path=self.db_path)
         self.observation_builder = ObservationBuilder(source_root=self.source_root, db_path=self.db_path)
+        self.lora_logger = LoRATrajectoryLogger()
 
         self._runtime: _EpisodeRuntime | None = None
         self._grader: BaseGrader | None = None
@@ -195,6 +197,18 @@ class CodeReviewEnv:
                 task_description=runtime.task.description,
                 context_request=context_request,
             )
+
+        self.lora_logger.log(
+            source_root=self.source_root,
+            episode_id=runtime.episode_id,
+            module_id=module_id,
+            step_number=step_number,
+            action=action,
+            reward=reward.raw_value,
+            done=runtime.done,
+            task_id=runtime.task.task_id,
+            observation_summary=f"module={observation.module_id} actions={','.join(observation.available_actions[:6])}",
+        )
 
         return StepResult(
             observation=observation,
