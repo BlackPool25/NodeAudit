@@ -418,7 +418,8 @@ def tasks() -> list[dict[str, object]]:
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset(payload: ResetRequest) -> ResetResponse:
+def reset(payload: ResetRequest | None = None) -> ResetResponse:
+	payload = payload or ResetRequest()
 	try:
 		observation = ENV.reset(
 			task_id=payload.task_id,
