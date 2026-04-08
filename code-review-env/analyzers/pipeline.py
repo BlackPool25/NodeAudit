@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -102,8 +103,19 @@ class AnalyzerPipeline:
         if not rules_dir.exists():
             rules_dir = Path(__file__).resolve().parents[1] / "semgrep_rules"
 
+        semgrep_bin = os.getenv("GRAPHREVIEW_SEMGREP_BIN")
+        if not semgrep_bin:
+            pysemgrep_candidate = str((Path.home() / ".local" / "bin" / "pysemgrep").resolve())
+            if Path(pysemgrep_candidate).exists():
+                semgrep_bin = pysemgrep_candidate
+            else:
+                semgrep_bin = shutil.which("semgrep")
+        if not semgrep_bin:
+            semgrep_candidate = str((Path.home() / ".local" / "bin" / "semgrep").resolve())
+            semgrep_bin = semgrep_candidate if Path(semgrep_candidate).exists() else "semgrep"
+
         cmd = [
-            "semgrep",
+            semgrep_bin,
             "--json",
             "--config",
             str(rules_dir),
