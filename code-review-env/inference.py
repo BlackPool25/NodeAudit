@@ -18,7 +18,7 @@ from training.weights import WeightSafetyManager
 
 
 # Submission-required runtime variables.
-HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HFTOKEN")
 LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
 
 # Hosted fallback: if HF_TOKEN exists and endpoint/model are not explicitly provided,
