@@ -1,0 +1,18 @@
+rules:
+  - id: graphreview.none-return-not-checked
+    message: "Potential None return not checked before attribute access"
+    severity: ERROR
+    languages: [python]
+    patterns:
+      - pattern: |
+          $VAR = $FUNC(...)
+          ...
+          $VAR.$METHOD(...)
+      - pattern-not: |
+          $VAR = $FUNC(...)
+          ...
+          if $VAR is None:
+            ...
+    metadata:
+      category: cascade
+      graphreview_stage: hard

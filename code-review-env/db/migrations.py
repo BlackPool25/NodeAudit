@@ -78,6 +78,13 @@ def _apply_lightweight_migrations(engine) -> None:
         if "connection_summary" not in edge_columns:
             add_statements.append("ALTER TABLE moduleedge ADD COLUMN connection_summary TEXT DEFAULT ''")
 
+    if "analyzerrun" in inspector.get_table_names():
+        analyzer_columns = {col["name"] for col in inspector.get_columns("analyzerrun")}
+        if "analyzer_version" not in analyzer_columns:
+            add_statements.append("ALTER TABLE analyzerrun ADD COLUMN analyzer_version TEXT DEFAULT ''")
+        if "command_hash" not in analyzer_columns:
+            add_statements.append("ALTER TABLE analyzerrun ADD COLUMN command_hash TEXT DEFAULT ''")
+
     if not add_statements:
         return
 

@@ -1,0 +1,9 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass
+class Order:
+    order_id: str
+    amount_cents: int

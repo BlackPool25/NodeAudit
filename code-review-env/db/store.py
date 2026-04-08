@@ -13,6 +13,9 @@ from sqlmodel import Session, delete, select
 
 from db.migrations import get_default_db_path, get_engine, init_db
 from db.schema import (
+    AnalyzerFinding,
+    AnalyzerRun,
+    AnalyzerStatus,
     EdgeType,
     EpisodeRecord,
     LinterFinding,
@@ -22,6 +25,7 @@ from db.schema import (
     ReviewStatus,
     SeedMeta,
     Severity,
+    TrainingRun,
 )
 
 
@@ -190,6 +194,168 @@ class Store:
                     )
                 )
             session.commit()
+
+    def append_findings_for_module(self, module_id: str, findings: list[dict[str, str | int]]) -> None:
+        with Session(self.engine) as session:
+            for finding in findings:
+                session.add(
+                    LinterFinding(
+                        source_root=self.config.source_root,
+                        module_id=module_id,
+                        tool=str(finding["tool"]),
+                        line=int(finding["line"]),
+                        severity=Severity(str(finding["severity"])),
+                        code=str(finding["code"]),
+                        message=str(finding["message"]),
+                    )
+                )
+            session.commit()
+
+    def clear_analyzer_data(self) -> None:
+        with Session(self.engine) as session:
+            session.exec(
+                delete(AnalyzerFinding).where(
+                    AnalyzerFinding.source_root == self.config.source_root
+                )
+            )
+            session.exec(
+                delete(AnalyzerRun).where(
+                    AnalyzerRun.source_root == self.config.source_root
+                )
+            )
+            session.commit()
+
+    def create_analyzer_run(
+        self,
+        *,
+        analyzer: str,
+        analyzer_version: str,
+        status: str,
+        findings_count: int,
+        command: str,
+        command_hash: str,
+        error_message: str | None,
+    ) -> AnalyzerRun:
+        with Session(self.engine) as session:
+            run = AnalyzerRun(
+                source_root=self.config.source_root,
+                analyzer=analyzer,
+                analyzer_version=analyzer_version,
+                status=AnalyzerStatus(status),
+                findings_count=findings_count,
+                command=command,
+                command_hash=command_hash,
+                error_message=error_message,
+            )
+            session.add(run)
+            session.commit()
+            session.refresh(run)
+            return run
+
+    def add_analyzer_findings(
+        self,
+        analyzer_run_id: int,
+        analyzer: str,
+        findings: list[dict[str, str | int]],
+    ) -> None:
+        with Session(self.engine) as session:
+            for item in findings:
+                session.add(
+                    AnalyzerFinding(
+                        source_root=self.config.source_root,
+                        analyzer_run_id=analyzer_run_id,
+                        analyzer=analyzer,
+                        module_id=str(item["module_id"]),
+                        line=int(item.get("line", 1)),
+                        severity=Severity(str(item.get("severity", "medium"))),
+                        rule_id=str(item.get("rule_id", analyzer)),
+                        message=str(item.get("message", "")),
+                        evidence=str(item.get("evidence", "")),
+                    )
+                )
+            session.commit()
+
+    def get_analyzer_findings(self, module_id: str | None = None) -> list[AnalyzerFinding]:
+        with Session(self.engine) as session:
+            query = select(AnalyzerFinding).where(
+                AnalyzerFinding.source_root == self.config.source_root
+            )
+            if module_id is not None:
+                query = query.where(AnalyzerFinding.module_id == module_id)
+            return list(session.exec(query).all())
+
+    def get_analyzer_findings_for_module(
+        self,
+        module_id: str,
+        analyzers: set[str] | None = None,
+    ) -> list[AnalyzerFinding]:
+        with Session(self.engine) as session:
+            query = select(AnalyzerFinding).where(
+                AnalyzerFinding.source_root == self.config.source_root,
+                AnalyzerFinding.module_id == module_id,
+            )
+            if analyzers:
+                query = query.where(AnalyzerFinding.analyzer.in_(sorted(analyzers)))
+            findings = list(session.exec(query).all())
+        return sorted(findings, key=lambda item: (item.line, item.analyzer, item.rule_id, item.id or 0))
+
+    def create_training_run(
+        self,
+        *,
+        run_id: str,
+        model_name: str,
+        model_sha256: str,
+        deterministic_findings: int,
+        agent_findings: int,
+        true_positives: int,
+        false_positives: int,
+        false_negatives: int,
+        precision: float,
+        recall: float,
+        passed_non_regression: bool,
+        output_path: str,
+        run_config_json: str,
+    ) -> TrainingRun:
+        with Session(self.engine) as session:
+            record = TrainingRun(
+                source_root=self.config.source_root,
+                run_id=run_id,
+                model_name=model_name,
+                model_sha256=model_sha256,
+                deterministic_findings=deterministic_findings,
+                agent_findings=agent_findings,
+                true_positives=true_positives,
+                false_positives=false_positives,
+                false_negatives=false_negatives,
+                precision=precision,
+                recall=recall,
+                passed_non_regression=passed_non_regression,
+                output_path=output_path,
+                run_config_json=run_config_json,
+            )
+            session.add(record)
+            session.commit()
+            session.refresh(record)
+            return record
+
+    def list_training_runs(self, limit: int = 50) -> list[TrainingRun]:
+        bounded_limit = max(1, min(limit, 500))
+        with Session(self.engine) as session:
+            query = (
+                select(TrainingRun)
+                .where(TrainingRun.source_root == self.config.source_root)
+                .order_by(TrainingRun.created_at.desc())
+                .limit(bounded_limit)
+            )
+            return list(session.exec(query).all())
+
+    def get_training_run(self, run_id: str) -> TrainingRun | None:
+        with Session(self.engine) as session:
+            query = select(TrainingRun).where(
+                TrainingRun.source_root == self.config.source_root,
+                TrainingRun.run_id == run_id,
+            )
+            return session.exec(query).first()
 
     def get_findings(self, module_id: str) -> list[LinterFinding]:
         with Session(self.engine) as session:
@@ -484,6 +650,21 @@ class Store:
             session.exec(
                 delete(ModuleNode).where(
                     ModuleNode.source_root == self.config.source_root
+                )
+            )
+            session.exec(
+                delete(AnalyzerFinding).where(
+                    AnalyzerFinding.source_root == self.config.source_root
+                )
+            )
+            session.exec(
+                delete(AnalyzerRun).where(
+                    AnalyzerRun.source_root == self.config.source_root
+                )
+            )
+            session.exec(
+                delete(TrainingRun).where(
+                    TrainingRun.source_root == self.config.source_root
                 )
             )
             session.commit()

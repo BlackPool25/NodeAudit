@@ -75,22 +75,11 @@ def _build_actions_for_module(
     if grader_level == "hard":
         node = store.get_node(module_id)
         if node is not None:
-            existing_findings = [
-                {
-                    "tool": finding.tool,
-                    "line": finding.line,
-                    "code": finding.code,
-                    "severity": finding.severity.value,
-                    "message": finding.message,
-                }
-                for finding in findings
-            ]
             finder = HardIssueFinder()
             proposals = finder.propose(
                 module_id=module_id,
                 raw_code=node.raw_code,
                 ast_summary=node.ast_summary,
-                existing_findings=existing_findings,
             )
             for proposal in _filter_hard_proposals(proposals, node.raw_code, findings):
                 if proposal.category == "security":
@@ -112,12 +101,6 @@ def _build_actions_for_module(
                             f"[hard-llm] {proposal.title}: {proposal.rationale} "
                             f"(confidence={proposal.confidence:.2f})"
                         ),
-                    )
-                )
-                actions.append(
-                    ReviewAction(
-                        action_type=ActionType.ADD_COMMENT,
-                        content=f"[semantic-{issue.stage}] {issue.message}",
                     )
                 )
 

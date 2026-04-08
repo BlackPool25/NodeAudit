@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import json
 from typing import Iterable
 
-from db.schema import LinterFinding, ReviewStatus
+from db.schema import AnalyzerFinding, ReviewStatus
 from db.store import Store
 from env.action import ActionType, ReviewAction
 from env.reward import EpisodeGradeSummary, ReviewReward, RewardReason, make_reward, normalize_reward
@@ -28,7 +28,7 @@ class BaseGrader(ABC):
         self,
         module_id: str,
         action: ReviewAction,
-        findings: list[LinterFinding],
+        findings: list[AnalyzerFinding],
         state: EpisodeState,
     ) -> ReviewReward:
         raise NotImplementedError
@@ -117,6 +117,30 @@ class BaseGrader(ABC):
             review_status=status,
         )
 
-    def _sorted_findings(self, module_id: str) -> list[LinterFinding]:
-        findings = self.store.get_findings(module_id)
-        return sorted(findings, key=lambda item: (item.line, item.tool, item.code, item.id or 0))
+    def truth_analyzers(self) -> set[str] | None:
+        return None
+
+    def _sorted_findings(self, module_id: str) -> list[AnalyzerFinding]:
+        analyzers = self.truth_analyzers()
+        findings = self.store.get_analyzer_findings_for_module(module_id, analyzers=analyzers)
+        if findings:
+            return findings
+
+        # Backward-compatible fallback for legacy DBs.
+        legacy = self.store.get_findings(module_id)
+        fallback: list[AnalyzerFinding] = []
+        for item in legacy:
+            fallback.append(
+                AnalyzerFinding(
+                    source_root=self.store.config.source_root,
+                    analyzer_run_id=0,
+                    analyzer=item.tool,
+                    module_id=item.module_id,
+                    line=item.line,
+                    severity=item.severity,
+                    rule_id=item.code,
+                    message=item.message,
+                    evidence="",
+                )
+            )
+        return sorted(fallback, key=lambda entry: (entry.line, entry.analyzer, entry.rule_id, entry.id or 0))

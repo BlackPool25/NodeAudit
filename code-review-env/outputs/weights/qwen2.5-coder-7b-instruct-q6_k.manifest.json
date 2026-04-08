@@ -1,0 +1,7 @@
+{
+  "created_at": "2026-04-08T12:23:00.903061+00:00",
+  "model_name": "qwen2.5-coder-7b-instruct-q6_k",
+  "sha256": "724b2b241230aad689f5b43fe8f22d452755bf98677fbcfaa36d2a1b6a89c140",
+  "size_bytes": 6254198752,
+  "source_path": "/home/lightdesk/Downloads/Projects/NodeAudit/Models/Qwen2.5-Coder-7B-Instruct-Q6_K.gguf"
+}

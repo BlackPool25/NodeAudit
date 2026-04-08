@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from db.schema import LinterFinding
+from db.schema import AnalyzerFinding
 from env.action import ActionType, ReviewAction
 from env.reward import RewardReason, ReviewReward, make_reward
 from graders.base_grader import EpisodeState
@@ -14,11 +14,14 @@ class MediumGrader(EasyGrader):
 
 	KEYWORD_MIN_JACCARD = 0.3
 
+	def truth_analyzers(self) -> set[str] | None:
+		return {"mypy", "pyright"}
+
 	def grade_action(
 		self,
 		module_id: str,
 		action: ReviewAction,
-		findings: list[LinterFinding],
+		findings: list[AnalyzerFinding],
 		state: EpisodeState,
 	) -> ReviewReward:
 		if action.action_type == ActionType.ADD_COMMENT:
@@ -40,14 +43,16 @@ class MediumGrader(EasyGrader):
 
 		return super().grade_action(module_id, action, findings, state)
 
-	def _best_comment_match(self, comment: str, findings: list[LinterFinding]) -> LinterFinding | None:
+	def _best_comment_match(self, comment: str, findings: list[AnalyzerFinding]) -> AnalyzerFinding | None:
 		comment_tokens = self._tokenize(comment)
 		if not comment_tokens:
 			return None
 
-		best: tuple[float, LinterFinding] | None = None
+		best: tuple[float, AnalyzerFinding] | None = None
 		for finding in findings:
-			finding_tokens = self._tokenize(finding.message)
+			rule_hint = str(getattr(finding, "rule_id", getattr(finding, "code", "")))
+			message = str(getattr(finding, "message", ""))
+			finding_tokens = self._tokenize(f"{rule_hint} {message}")
 			if not finding_tokens:
 				continue
 			score = self._jaccard(comment_tokens, finding_tokens)

@@ -1,4 +1,6 @@
 from db.schema import (
+    AnalyzerFinding,
+    AnalyzerRun,
     EdgeType,
     EpisodeRecord,
     LinterFinding,
@@ -9,9 +11,12 @@ from db.schema import (
     SeedMeta,
     Severity,
     TaskDefinition,
+    TrainingRun,
 )
 
 __all__ = [
+    "AnalyzerFinding",
+    "AnalyzerRun",
     "EdgeType",
     "EpisodeRecord",
     "LinterFinding",
@@ -22,4 +27,5 @@ __all__ = [
     "SeedMeta",
     "Severity",
     "TaskDefinition",
+    "TrainingRun",
 ]

@@ -2,7 +2,7 @@
 
 Dependency-aware RL environment for Python code review, backed by persistent SQLite/libSQL graph storage.
 
-## Implemented Through Phase 5
+## Implemented Through Phase 8
 
 Phase 1:
 
@@ -43,6 +43,20 @@ Phase 6:
 - Added optional LoRA trajectory logging for cross-project learning data collection.
 - Added root `.env` support for centralized configuration management.
 
+Phase 7:
+
+- Added deterministic analyzer run/finding persistence (`AnalyzerRun`, `AnalyzerFinding`).
+- Added training harness with GGUF weight verification and non-regression checks.
+
+Phase 8:
+
+- Expanded analyzer pipeline to include pylint, pyflakes, bandit, mypy, pyright, semgrep, and vulture.
+- Switched easy/medium/hard graders to analyzer-native truth mapping by task level.
+- Refactored hard grading to deterministic semgrep + graph attribution checks.
+- Added training run registry in SQLite (`TrainingRun`) with precision/recall and drift metrics.
+- Added canonical challenge fixture and validator in `sample_project_canonical/`.
+- Extended FastAPI UI with training pipeline controls and run history.
+
 ## Core Runtime Components
 
 - `env/environment.py`
@@ -72,6 +86,10 @@ Phase 6:
     - `GET /reports/accuracy`
     - `POST /reports/generate`
     - `GET /graph/export`
+    - `POST /analysis/run`
+    - `POST /training/bootstrap`
+    - `POST /training/run`
+    - `GET /training/runs`
 
 - `visualizer/pyvis_renderer.py`
   - Renders dependency graph with review-aware colors and edge-type styling.
@@ -298,6 +316,31 @@ Frontend results console (served by uvicorn app):
 - `GET /ui/results` lists discovered `*_report.json` artifacts under `GRAPHREVIEW_OUTPUT_DIR`.
 - `GET /ui/result?report_path=...` returns report payload + DB schema columns + connectivity diagnostics.
 - `GET /artifacts/...` serves generated HTML/JSON/Markdown assets for direct viewing.
+
+Training and analyzer workflow in UI:
+
+- Open the `Training` tab:
+  - `Run Training Bootstrap` verifies Qwen GGUF manifest + checksum.
+  - `Run Training Episode` executes `inference.py`, persists run metrics to SQLite, and refreshes run history.
+- Open the `Deterministic Analysis` tab:
+  - runs full analyzer stack and persists normalized findings.
+
+Equivalent training API calls:
+
+```bash
+curl -s -X POST http://localhost:8000/training/bootstrap
+curl -s -X POST http://localhost:8000/training/run -H "content-type: application/json" -d '{"force_seed":false}'
+curl -s http://localhost:8000/training/runs?limit=20
+```
+
+Canonical challenge fixture:
+
+- `sample_project_canonical/` contains the exact 10-file challenge fixture.
+- Validate fixture layout and bug signatures with:
+
+```bash
+python -m tasks.validate_canonical_fixture
+```
 
 If graphs look fragmented, regenerate with the latest parser/edge builder and force reseed:
 

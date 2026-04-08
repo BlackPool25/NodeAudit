@@ -12,6 +12,10 @@ dependencies = [
 	"fastapi>=0.115",
 	"uvicorn>=0.30",
 	"pyvis>=0.3.2",
+	"mypy>=1.10",
+	"pyright>=1.1.390",
+	"semgrep>=1.75",
+	"vulture>=2.11",
 ]
 
 [project.scripts]

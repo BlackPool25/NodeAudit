@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from db.store import Store
+from analyzers.pipeline import AnalyzerPipeline
 from parser.ast_parser import parse_python_file
 from parser.chunker import chunk_module
 from parser.graph_builder import build_edges
@@ -199,6 +200,64 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
             connection_summary=connection_summary,
         )
 
+    analyzer_pipeline = AnalyzerPipeline(target_dir=target_dir)
+    analyzer_findings, analyzer_runs = analyzer_pipeline.run_all()
+    analyzer_findings_by_tool: dict[str, list[dict[str, str | int]]] = {}
+    for run in analyzer_runs:
+        created = store.create_analyzer_run(
+            analyzer=run.analyzer,
+            analyzer_version=run.analyzer_version,
+            status=run.status,
+            findings_count=run.findings,
+            command=run.command,
+            command_hash=run.command_hash,
+            error_message=run.error_message,
+        )
+        run_findings = [
+            item
+            for item in analyzer_findings
+            if item.analyzer == run.analyzer and item.module_id in module_ids
+        ]
+        unique_keys: set[str] = set()
+        serialized = [
+            {
+                "module_id": item.module_id,
+                "line": item.line,
+                "severity": item.severity,
+                "rule_id": item.rule_id,
+                "message": item.message,
+                "evidence": item.evidence,
+            }
+            for item in run_findings
+            if not (
+                (key := f"{item.module_id}:{item.line}:{item.rule_id}:{hashlib.sha256(item.message.encode('utf-8')).hexdigest()}") in unique_keys
+                or unique_keys.add(key)
+            )
+        ]
+        if serialized:
+            store.add_analyzer_findings(
+                analyzer_run_id=int(created.id or 0),
+                analyzer=run.analyzer,
+                findings=serialized,
+            )
+            analyzer_findings_by_tool[run.analyzer] = serialized
+
+    for tool, findings in analyzer_findings_by_tool.items():
+        findings_by_module: dict[str, list[dict[str, str | int]]] = {}
+        for item in findings:
+            module = str(item["module_id"])
+            findings_by_module.setdefault(module, []).append(
+                {
+                    "tool": tool,
+                    "line": int(item["line"]),
+                    "severity": str(item["severity"]),
+                    "code": str(item["rule_id"]),
+                    "message": str(item["message"]),
+                }
+            )
+        for module_id, module_findings in findings_by_module.items():
+            store.append_findings_for_module(module_id=module_id, findings=module_findings)
+
     snapshot = store.get_full_graph()
     meta_payload = {
         "seeded": True,
@@ -206,6 +265,7 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
         "codebase_hash": current_hash,
         "node_count": len(snapshot.nodes),
         "edge_count": len(snapshot.edges),
+        "deterministic_analyzer_findings": len(analyzer_findings),
     }
     store.set_meta(meta_key, json.dumps(meta_payload))
 
@@ -215,6 +275,7 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
         "codebase_hash": current_hash,
         "node_count": len(snapshot.nodes),
         "edge_count": len(snapshot.edges),
+        "deterministic_analyzer_findings": len(analyzer_findings),
     }
 
 

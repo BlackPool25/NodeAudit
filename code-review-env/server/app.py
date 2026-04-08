@@ -3,15 +3,19 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 import uvicorn
 import networkx as nx
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict
 from sqlmodel import Session, select
 
+from analyzers.pipeline import AnalyzerPipeline
 from db.schema import ModuleEdge, ModuleNode
 from db.store import Store
 from env.env_loader import load_env_file
@@ -19,6 +23,10 @@ from env.action import ActionType, ReviewAction
 from env.environment import CodeReviewEnv, StepResult
 from env.observation import CodeObservation
 from env.state import GraphState
+from env.runtime_config import load_runtime_config
+from llm.critical_analysis import build_critical_analysis
+from training.run_manager import TrainingRunManager
+from training.weights import WeightSafetyManager
 from visualizer.report_generator import GeneratedArtifacts, generate_phase5_outputs
 
 load_env_file()
@@ -122,8 +130,78 @@ class ResultDetail(BaseModel):
 	db_columns: dict[str, list[str]]
 
 
+class AnalyzerRunRequest(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	timeout_seconds: int = 45
+
+
+class AnalyzerRunResponse(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	runs: list[dict[str, object]]
+	finding_count: int
+
+
+class TrainingBootstrapResponse(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	weight_path: str
+	weight_sha256: str
+	deterministic_findings: int
+	precision: float
+	recall: float
+
+
+class TrainingRunRequest(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	force_seed: bool = False
+	deterministic_output: str = "outputs/training/dataset.latest.jsonl"
+	baseline_precision: float | None = None
+	baseline_recall: float | None = None
+	regression_tolerance: float = 0.01
+
+
+class TrainingRunResponse(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	ok: bool
+	exit_code: int
+	stdout_tail: str
+	end_payload: dict[str, object] | None = None
+
+
+class TrainingRunRecord(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	run_id: str
+	model_name: str
+	model_sha256: str
+	deterministic_findings: int
+	agent_findings: int
+	true_positives: int
+	false_positives: int
+	false_negatives: int
+	precision: float
+	recall: float
+	passed_non_regression: bool
+	output_path: str
+	created_at: str
+
+
+class TrainingRunAnalysisResponse(BaseModel):
+	model_config = ConfigDict(strict=True, extra="forbid")
+
+	run_id: str
+	model_name: str
+	analysis: str
+	non_scoring: bool = True
+
+
 OUTPUT_ROOT = Path(os.getenv("GRAPHREVIEW_OUTPUT_DIR", "outputs")).resolve()
 UI_INDEX_PATH = Path(__file__).resolve().parent / "static" / "index.html"
+STATIC_ROOT = Path(__file__).resolve().parent / "static"
 
 
 def _default_source_root() -> str:
@@ -141,6 +219,7 @@ STORE = Store(source_root=_default_source_root(), db_path=_default_db_path())
 
 app = FastAPI(title="GraphReview OpenEnv Server", version="0.4.0")
 app.mount("/artifacts", StaticFiles(directory=str(OUTPUT_ROOT), check_dir=False), name="artifacts")
+app.mount("/static", StaticFiles(directory=str(STATIC_ROOT), check_dir=True), name="static")
 
 
 def _artifact_url(path: Path) -> str:
@@ -249,6 +328,13 @@ def ui_home() -> HTMLResponse:
 	if not UI_INDEX_PATH.exists():
 		raise HTTPException(status_code=500, detail="UI index not found")
 	return HTMLResponse(UI_INDEX_PATH.read_text(encoding="utf-8"))
+
+
+@app.get("/ui", response_class=FileResponse)
+def ui_index() -> FileResponse:
+	if not UI_INDEX_PATH.exists():
+		raise HTTPException(status_code=500, detail="UI index not found")
+	return FileResponse(path=UI_INDEX_PATH)
 
 
 @app.get("/ui/results", response_model=list[ResultSummary])
@@ -539,6 +625,196 @@ def generate_report(payload: ReportGenerateRequest) -> ReportGenerateResponse:
 	except Exception as exc:
 		raise HTTPException(status_code=400, detail=str(exc)) from exc
 	return ReportGenerateResponse(artifacts=artifacts)
+
+
+@app.post("/analysis/run", response_model=AnalyzerRunResponse)
+def run_deterministic_analysis(payload: AnalyzerRunRequest) -> AnalyzerRunResponse:
+	pipeline = AnalyzerPipeline(target_dir=Path(ENV.source_root), timeout_seconds=payload.timeout_seconds)
+	findings, summaries = pipeline.run_all()
+
+	for summary in summaries:
+		run = STORE.create_analyzer_run(
+			analyzer=summary.analyzer,
+			analyzer_version=summary.analyzer_version,
+			status=summary.status,
+			findings_count=summary.findings,
+			command=summary.command,
+			command_hash=summary.command_hash,
+			error_message=summary.error_message,
+		)
+		tool_findings = [
+			{
+				"module_id": item.module_id,
+				"line": item.line,
+				"severity": item.severity,
+				"rule_id": item.rule_id,
+				"message": item.message,
+				"evidence": item.evidence,
+			}
+			for item in findings
+			if item.analyzer == summary.analyzer
+		]
+		if tool_findings:
+			STORE.add_analyzer_findings(
+				analyzer_run_id=int(run.id or 0),
+				analyzer=summary.analyzer,
+				findings=tool_findings,
+			)
+
+	runs_payload = [
+		{
+			"analyzer": item.analyzer,
+			"status": item.status,
+			"findings": item.findings,
+			"error_message": item.error_message,
+		}
+		for item in summaries
+	]
+	return AnalyzerRunResponse(runs=runs_payload, finding_count=len(findings))
+
+
+@app.post("/training/bootstrap", response_model=TrainingBootstrapResponse)
+def bootstrap_training() -> TrainingBootstrapResponse:
+	config = load_runtime_config()
+	weight_manager = WeightSafetyManager(Path(config.llm_weight_manifest_dir))
+	model_name = "qwen2.5-coder-7b-instruct-q6_k"
+	try:
+		weight_path = weight_manager.load_verified(model_name)
+		sha256 = weight_manager.checksum(weight_path)
+	except FileNotFoundError:
+		manifest = weight_manager.register_existing(model_name=model_name, weight_path=Path(config.llm_model_agent_path))
+		weight_path = Path(manifest.source_path)
+		sha256 = manifest.sha256
+
+	manager = TrainingRunManager()
+	deterministic = STORE.get_analyzer_findings()
+	deterministic_keys = {
+		f"{item.analyzer}:{item.module_id}:{item.rule_id}:{item.line}"
+		for item in deterministic
+	}
+	comparison = manager.compare(deterministic_findings=deterministic_keys, agent_findings=set())
+
+	return TrainingBootstrapResponse(
+		weight_path=str(weight_path),
+		weight_sha256=sha256,
+		deterministic_findings=len(deterministic),
+		precision=comparison.precision,
+		recall=comparison.recall,
+	)
+
+
+@app.post("/training/run", response_model=TrainingRunResponse)
+def run_training(payload: TrainingRunRequest) -> TrainingRunResponse:
+	cmd = [
+		sys.executable,
+		"inference.py",
+		str(Path(ENV.source_root)),
+		"--deterministic-output",
+		payload.deterministic_output,
+		"--regression-tolerance",
+		str(payload.regression_tolerance),
+	]
+	if payload.force_seed:
+		cmd.append("--force-seed")
+	if payload.baseline_precision is not None:
+		cmd.extend(["--baseline-precision", str(payload.baseline_precision)])
+	if payload.baseline_recall is not None:
+		cmd.extend(["--baseline-recall", str(payload.baseline_recall)])
+
+	try:
+		proc = subprocess.run(
+			cmd,
+			cwd=str(Path(__file__).resolve().parents[1]),
+			capture_output=True,
+			text=True,
+			check=False,
+			timeout=180,
+		)
+	except subprocess.TimeoutExpired as exc:
+		partial = (exc.stdout or "") + ("\n" + exc.stderr if exc.stderr else "")
+		lines = [line for line in partial.splitlines() if line.strip()]
+		return TrainingRunResponse(
+			ok=False,
+			exit_code=124,
+			stdout_tail="\n".join(lines[-40:]),
+			end_payload=None,
+		)
+
+	output = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
+	lines = [line for line in output.splitlines() if line.strip()]
+	stdout_tail = "\n".join(lines[-40:])
+	end_payload: dict[str, object] | None = None
+	for line in reversed(lines):
+		if line.startswith("[END] "):
+			try:
+				loaded = json.loads(line.removeprefix("[END] ").strip())
+				if isinstance(loaded, dict):
+					end_payload = loaded
+			except Exception:
+				end_payload = None
+			break
+
+	return TrainingRunResponse(
+		ok=proc.returncode == 0,
+		exit_code=proc.returncode,
+		stdout_tail=stdout_tail,
+		end_payload=end_payload,
+	)
+
+
+@app.get("/training/runs", response_model=list[TrainingRunRecord])
+def training_runs(limit: int = Query(default=30, ge=1, le=200)) -> list[TrainingRunRecord]:
+	runs = STORE.list_training_runs(limit=limit)
+	return [
+		TrainingRunRecord(
+			run_id=item.run_id,
+			model_name=item.model_name,
+			model_sha256=item.model_sha256,
+			deterministic_findings=item.deterministic_findings,
+			agent_findings=item.agent_findings,
+			true_positives=item.true_positives,
+			false_positives=item.false_positives,
+			false_negatives=item.false_negatives,
+			precision=item.precision,
+			recall=item.recall,
+			passed_non_regression=item.passed_non_regression,
+			output_path=item.output_path,
+			created_at=item.created_at.isoformat(),
+		)
+		for item in runs
+	]
+
+
+@app.get("/training/runs/{run_id}/analysis", response_model=TrainingRunAnalysisResponse)
+def training_run_analysis(run_id: str) -> TrainingRunAnalysisResponse:
+	run = STORE.get_training_run(run_id)
+	if run is None:
+		raise HTTPException(status_code=404, detail=f"Training run not found: {run_id}")
+
+	config = load_runtime_config()
+	analysis = build_critical_analysis(
+		model=config.llm_model_judge,
+		base_url=config.llm_base_url,
+		api_key=config.llm_api_key,
+		run_payload={
+			"run_id": run.run_id,
+			"model_name": run.model_name,
+			"deterministic_findings": run.deterministic_findings,
+			"agent_findings": run.agent_findings,
+			"true_positives": run.true_positives,
+			"false_positives": run.false_positives,
+			"false_negatives": run.false_negatives,
+			"precision": run.precision,
+			"recall": run.recall,
+			"passed_non_regression": run.passed_non_regression,
+		},
+	)
+
+	return TrainingRunAnalysisResponse(
+		run_id=run.run_id,
+		model_name=run.model_name,
+		analysis=analysis,
+	)
 
 
 def main() -> None:

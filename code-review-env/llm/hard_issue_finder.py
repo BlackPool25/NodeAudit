@@ -30,19 +30,17 @@ class HardIssueFinder:
         self.timeout = float(os.getenv("GRAPHREVIEW_HARD_ISSUE_FINDER_TIMEOUT_SECONDS", "12"))
         self.max_issues = int(os.getenv("GRAPHREVIEW_HARD_ISSUE_FINDER_MAX_ISSUES", "4"))
 
-    def propose(self, module_id: str, raw_code: str, ast_summary: str, existing_findings: list[dict[str, object]]) -> list[ProposedIssue]:
+    def propose(self, module_id: str, raw_code: str, ast_summary: str) -> list[ProposedIssue]:
         if not self.enabled:
             return []
 
         payload = {
             "module_id": module_id,
             "ast_summary": ast_summary,
-            "existing_findings": existing_findings,
             "raw_code": raw_code,
             "rules": {
                 "only_real_bugs": True,
                 "avoid_style_only": True,
-                "avoid_duplicates_of_existing_findings": True,
                 "max_issues": self.max_issues,
             },
             "output_schema": {
@@ -69,9 +67,12 @@ class HardIssueFinder:
                     {
                         "role": "system",
                         "content": (
-                            "You are a strict bug finder for hard-mode code review. "
-                            "Find only high-value real bugs with concrete reasoning. "
-                            "Do not output style issues. Output valid JSON only."
+                            "You are the agent in a dependency-aware RL code review environment.\n\n"
+                            "Your job is to reason from source code only and propose concrete bugs with evidence. "
+                            "You are not allowed to rely on external analyzer outputs, prior findings, or hidden hints.\n\n"
+                            "Prioritize logical and dependency-linked defects, including nullable flows and cascade risks. "
+                            "For each proposed issue, anchor the rationale to exact code behavior and likely runtime impact.\n\n"
+                            "Reject style-only observations and uncertain speculation. Return strictly valid JSON that matches the requested schema."
                         ),
                     },
                     {"role": "user", "content": json.dumps(payload, sort_keys=True)},

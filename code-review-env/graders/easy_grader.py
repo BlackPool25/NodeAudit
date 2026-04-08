@@ -1,21 +1,24 @@
 from __future__ import annotations
 
-from db.schema import LinterFinding
+from db.schema import AnalyzerFinding
 from env.action import ActionType, ReviewAction
 from env.reward import RewardReason, ReviewReward, make_reward
 from graders.base_grader import BaseGrader, EpisodeState
 
 
 class EasyGrader(BaseGrader):
-	"""Deterministic grading against linter findings only."""
+	"""Deterministic grading against analyzer findings."""
 
 	LINE_TOLERANCE = 3
+
+	def truth_analyzers(self) -> set[str] | None:
+		return {"pylint", "pyflakes", "bandit", "vulture"}
 
 	def grade_action(
 		self,
 		module_id: str,
 		action: ReviewAction,
-		findings: list[LinterFinding],
+		findings: list[AnalyzerFinding],
 		state: EpisodeState,
 	) -> ReviewReward:
 		if action.action_type == ActionType.REQUEST_CONTEXT:
@@ -48,7 +51,7 @@ class EasyGrader(BaseGrader):
 				state.matched_finding_ids.add(match.id or -1)
 				return make_reward(
 					RewardReason.CORRECT_FLAG,
-					f"Matched finding {match.tool}:{match.code} at line {match.line}",
+					f"Matched finding {match.analyzer}:{match.rule_id} at line {match.line}",
 					matched_finding_id=match.id,
 				)
 			return make_reward(RewardReason.FALSE_POSITIVE_FLAG, "No matching finding")
@@ -58,9 +61,9 @@ class EasyGrader(BaseGrader):
 	def _match_finding(
 		self,
 		action: ReviewAction,
-		findings: list[LinterFinding],
+		findings: list[AnalyzerFinding],
 		state: EpisodeState,
-	) -> LinterFinding | None:
+	) -> AnalyzerFinding | None:
 		for finding in findings:
 			finding_id = finding.id or -1
 			if finding_id in state.matched_finding_ids:
@@ -74,13 +77,13 @@ class EasyGrader(BaseGrader):
 		return None
 
 	@staticmethod
-	def _category_matches(action_type: ActionType, finding: LinterFinding) -> bool:
+	def _category_matches(action_type: ActionType, finding: AnalyzerFinding) -> bool:
 		if action_type == ActionType.FLAG_SECURITY:
-			return finding.tool == "bandit"
+			return finding.analyzer == "bandit"
 		if action_type == ActionType.FLAG_STYLE:
-			return finding.tool == "pylint" and finding.severity.value == "low"
+			return finding.analyzer in {"pylint", "vulture"} and finding.severity.value == "low"
 		if action_type == ActionType.FLAG_BUG:
-			return finding.tool in {"pyflakes", "pylint"} and finding.severity.value in {
+			return finding.analyzer in {"pyflakes", "pylint", "vulture"} and finding.severity.value in {
 				"high",
 				"medium",
 			}

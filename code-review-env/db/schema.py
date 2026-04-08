@@ -26,6 +26,14 @@ class Severity(StrEnum):
     HIGH = "high"
 
 
+class AnalyzerStatus(StrEnum):
+    OK = "ok"
+    TIMEOUT = "timeout"
+    MISSING = "missing"
+    PARSE_ERROR = "parse-error"
+    NO_OUTPUT = "no-output"
+
+
 class ModuleNode(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     source_root: str = Field(index=True)
@@ -106,3 +114,50 @@ class TaskDefinition(SQLModel, table=True):
 class SeedMeta(SQLModel, table=True):
     key: str = Field(primary_key=True)
     value: str
+
+
+class AnalyzerRun(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_root: str = Field(index=True)
+    analyzer: str = Field(index=True)
+    analyzer_version: str = ""
+    status: AnalyzerStatus = Field(default=AnalyzerStatus.OK)
+    findings_count: int = 0
+    command: str = ""
+    command_hash: str = ""
+    error_message: Optional[str] = None
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    finished_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class AnalyzerFinding(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_root: str = Field(index=True)
+    analyzer_run_id: int = Field(index=True)
+    analyzer: str = Field(index=True)
+    module_id: str = Field(index=True)
+    line: int
+    severity: Severity = Field(default=Severity.MEDIUM)
+    rule_id: str = Field(index=True)
+    message: str
+    evidence: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class TrainingRun(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_root: str = Field(index=True)
+    run_id: str = Field(index=True)
+    model_name: str = Field(index=True)
+    model_sha256: str = ""
+    deterministic_findings: int = 0
+    agent_findings: int = 0
+    true_positives: int = 0
+    false_positives: int = 0
+    false_negatives: int = 0
+    precision: float = 0.0
+    recall: float = 0.0
+    passed_non_regression: bool = True
+    output_path: str = ""
+    run_config_json: str = "{}"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
