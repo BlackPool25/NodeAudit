@@ -154,6 +154,29 @@ LoRA trajectory hooks:
 - `GRAPHREVIEW_LORA_ENABLED` (default `false`)
 - `GRAPHREVIEW_LORA_DATA_PATH` (default `outputs/lora/transitions.jsonl`)
 
+Hard autonomous issue finder (hard stage):
+
+- `GRAPHREVIEW_HARD_ISSUE_FINDER_ENABLED` (default `true`)
+- `GRAPHREVIEW_HARD_ISSUE_FINDER_MODEL`
+- `GRAPHREVIEW_HARD_ISSUE_FINDER_BASE_URL`
+- `GRAPHREVIEW_HARD_ISSUE_FINDER_API_KEY`
+- `GRAPHREVIEW_HARD_ISSUE_FINDER_TIMEOUT_SECONDS`
+- `GRAPHREVIEW_HARD_ISSUE_FINDER_MAX_ISSUES`
+- `GRAPHREVIEW_HARD_PROPOSAL_MIN_CONFIDENCE` (default `0.70`)
+
+Hard stage behavior is layered:
+
+1. deterministic signals and semantic checks,
+2. LLM proposes new bug hypotheses,
+3. strict precision filters drop low-confidence or weak-evidence claims,
+4. only accepted issues are converted into review actions.
+
+`run_project` mode wiring:
+
+- `--llm-mode fast`: disables judge, verifier, and hard issue finder.
+- `--llm-mode judge`: enables primary judge and hard issue finder.
+- `--llm-mode fused`: enables primary+verifier and hard issue finder.
+
 Generate a LoRA-ready SFT dataset from transitions:
 
 ```bash
@@ -192,6 +215,31 @@ Run seed + easy/medium/hard reviews + artifact generation on any target codebase
 
 ```bash
 graphreview /absolute/path/to/your/codebase --force-seed
+```
+
+By default, this opens an interactive prompt and starts in full fused mode unless you choose a faster option.
+
+Current behavior:
+
+- Running `graphreview ...` with no `--llm-mode` starts an interactive prompt.
+- Default prompt choice is full fused mode.
+- You can choose mode, edge summaries, levels, thinking level, and reasoning effort each run.
+- Use `--no-prompt` for CI/non-interactive runs.
+
+LLM modes:
+
+```bash
+# Fast deterministic run (default)
+graphreview /absolute/path/to/your/codebase --force-seed --llm-mode fast --no-prompt
+
+# Primary judge only
+graphreview /absolute/path/to/your/codebase --force-seed --llm-mode judge --no-prompt
+
+# Primary + verifier fusion (slowest)
+graphreview /absolute/path/to/your/codebase --force-seed --llm-mode fused --edge-summary --no-prompt
+
+# Judge with explicit thinking settings
+graphreview /absolute/path/to/your/codebase --force-seed --llm-mode judge --think-level medium --reasoning-effort medium --no-prompt
 ```
 
 Equivalent without installing entrypoints:

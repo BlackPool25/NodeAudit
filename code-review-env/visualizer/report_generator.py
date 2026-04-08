@@ -27,6 +27,9 @@ class ReviewQualityMetrics(BaseModel):
     severity_weighted_coverage: float
     security_coverage: float
     dependency_attribution_validity: float
+    stage_coverage: float
+    llm_stage_catch_rate: float
+    llm_any_match_rate: float
     consistency: float
     confidence_score: float
 
@@ -132,6 +135,10 @@ def _compute_metrics(
 
     attribution_total = 0
     attribution_valid = 0
+    stage_set: set[str] = set()
+    total_findings = 0
+    llm_stage_caught = 0
+    llm_any_matched = 0
 
     contradictory_modules = 0
 
@@ -141,13 +148,20 @@ def _compute_metrics(
 
     for module_id in module_ids:
         findings = findings_by_module.get(module_id, [])
-        annotations = sorted(annotations_by_module.get(module_id, []), key=lambda item: item.step_number)
+        annotations = sorted(
+            annotations_by_module.get(module_id, []),
+            key=lambda item: (item.created_at, item.step_number),
+        )
 
         finding_by_id = {finding.id: finding for finding in findings if finding.id is not None}
         matched_finding_ids: set[int] = set()
+        llm_matched_ids: set[int] = set()
+        finding_stage_map: dict[int, str] = {}
 
         terminal_actions: set[str] = set()
         for annotation in annotations:
+            if annotation.task_id:
+                stage_set.add(str(annotation.task_id).split("_", 1)[0])
             if annotation.action_type in {"APPROVE", "REQUEST_CHANGES"}:
                 terminal_actions.add(annotation.action_type)
 
@@ -163,15 +177,23 @@ def _compute_metrics(
                 continue
 
             payload = _parse_note_payload(annotation.note)
+            if annotation.task_id and str(annotation.task_id).split("_", 1)[0] == "hard":
+                hard_matched = payload.get("matched_finding_id")
+                if isinstance(hard_matched, int):
+                    llm_matched_ids.add(hard_matched)
             matched_id = payload.get("matched_finding_id")
             if isinstance(matched_id, int) and matched_id in finding_by_id and matched_id not in matched_finding_ids:
                 matched_finding_ids.add(matched_id)
+                if annotation.task_id:
+                    finding_stage_map[matched_id] = str(annotation.task_id).split("_", 1)[0]
                 true_positives += 1
                 continue
 
             compatible = [item for item in _compatible_finding_ids(annotation.action_type, findings) if item not in matched_finding_ids]
             if compatible:
                 matched_finding_ids.add(compatible[0])
+                if annotation.task_id:
+                    finding_stage_map[compatible[0]] = str(annotation.task_id).split("_", 1)[0]
                 true_positives += 1
             else:
                 false_positives += 1
@@ -182,10 +204,15 @@ def _compute_metrics(
         false_negatives += max(len(findings) - len(matched_finding_ids), 0)
 
         for finding in findings:
+            total_findings += 1
             weight = severity_weight.get(finding.severity.value, 1.0)
             severity_weight_total += weight
             if finding.id in matched_finding_ids:
                 severity_weight_matched += weight
+                if finding.id is not None and finding_stage_map.get(finding.id) == "hard":
+                    llm_stage_caught += 1
+            if finding.id in llm_matched_ids:
+                llm_any_matched += 1
             if finding.tool == "bandit":
                 security_total += 1
                 if finding.id in matched_finding_ids:
@@ -197,14 +224,19 @@ def _compute_metrics(
     severity_coverage = _safe_div(severity_weight_matched, severity_weight_total)
     security_coverage = _safe_div(security_matched, security_total)
     attribution_validity = _safe_div(attribution_valid, attribution_total)
+    stage_coverage = _safe_div(len(stage_set), 3)
+    llm_stage_catch_rate = _safe_div(llm_stage_caught, total_findings)
+    llm_any_match_rate = _safe_div(llm_any_matched, total_findings)
     consistency = 1.0 - _safe_div(contradictory_modules, len(module_ids))
 
     confidence_score = (
         0.35 * f1
         + 0.2 * severity_coverage
         + 0.15 * security_coverage
-        + 0.2 * attribution_validity
-        + 0.1 * consistency
+        + 0.15 * attribution_validity
+        + 0.1 * stage_coverage
+        + 0.03 * llm_any_match_rate
+        + 0.02 * consistency
     )
     confidence_score = max(0.0, min(1.0, confidence_score))
 
@@ -218,6 +250,9 @@ def _compute_metrics(
         severity_weighted_coverage=severity_coverage,
         security_coverage=security_coverage,
         dependency_attribution_validity=attribution_validity,
+        stage_coverage=stage_coverage,
+        llm_stage_catch_rate=llm_stage_catch_rate,
+        llm_any_match_rate=llm_any_match_rate,
         consistency=consistency,
         confidence_score=confidence_score,
     )
@@ -260,13 +295,14 @@ def _build_node_title(
     for item in latest:
         latest_lines.append(f"#{item.step_number} {item.action_type}: {item.reward_given:.2f}")
 
+    summary_text = (module.summary or module.ast_summary).replace("\n", " ")
     return (
-        f"<b>{module.module_id}</b><br>"
-        f"status: {status}<br>"
-        f"confidence: {confidence_score:.2f}<br>"
-        f"summary: {(module.summary or module.ast_summary)[:420]}<br>"
-        f"shape: {_extract_module_shape(module.raw_code)}<br>"
-        f"security_findings: {len(security_findings)}<br>"
+        f"module: {module.module_id}\n"
+        f"status: {status}\n"
+        f"confidence: {confidence_score:.2f}\n"
+        f"summary: {summary_text[:260]}\n"
+        f"shape: {_extract_module_shape(module.raw_code)}\n"
+        f"security_findings: {len(security_findings)}\n"
         f"latest_reviews: {' | '.join(latest_lines) if latest_lines else 'none'}"
     )
 
@@ -296,6 +332,16 @@ def _build_json_payload(
     node_payload = []
     for node in sorted(nodes, key=lambda item: item.module_id):
         annotations = annotations_by_module.get(node.module_id, [])
+        finding_stage_map: dict[int, str] = {}
+        finding_llm_verified_map: dict[int, bool] = {}
+        for item in annotations:
+            payload = _parse_note_payload(item.note)
+            matched_id = payload.get("matched_finding_id")
+            if isinstance(matched_id, int) and item.task_id:
+                stage = str(item.task_id).split("_", 1)[0]
+                finding_stage_map.setdefault(matched_id, stage)
+                if stage == "hard":
+                    finding_llm_verified_map[matched_id] = True
         status = _derive_status(node, annotations)
         node_payload.append(
             {
@@ -303,7 +349,20 @@ def _build_json_payload(
                 "name": node.name,
                 "status": status,
                 "summary": node.summary or node.ast_summary,
+                "raw_code": node.raw_code,
                 "module_shape": _extract_module_shape(node.raw_code),
+                "caught_stages": sorted(
+                    {
+                        str(item.task_id).split("_", 1)[0]
+                        for item in annotations
+                        if item.task_id
+                    }
+                ),
+                "primary_caught_stage": (
+                    str(annotations[0].task_id).split("_", 1)[0]
+                    if annotations and annotations[0].task_id
+                    else None
+                ),
                 "security_findings": [
                     {
                         "line": finding.line,
@@ -322,12 +381,21 @@ def _build_json_payload(
                         "severity": finding.severity.value,
                         "code": finding.code,
                         "message": finding.message,
+                        "caught_stage": (finding_stage_map.get(finding.id) if finding.id is not None else None),
+                        "llm_first_catch": (
+                            finding_stage_map.get(finding.id) == "hard" if finding.id is not None else False
+                        ),
+                        "llm_verified": (
+                            bool(finding_llm_verified_map.get(finding.id, False)) if finding.id is not None else False
+                        ),
                     }
                     for finding in findings_by_module.get(node.module_id, [])
                 ],
                 "reviews": [
                     {
                         "step_number": item.step_number,
+                        "task_id": item.task_id,
+                        "caught_stage": (str(item.task_id).split("_", 1)[0] if item.task_id else None),
                         "action_type": item.action_type,
                         "reward_given": item.reward_given,
                         "attributed_to": item.attributed_to,
@@ -383,6 +451,9 @@ def _build_markdown_report(payload: dict[str, object]) -> str:
         "- Security coverage: "
         f"{metrics['security_coverage']:.3f} | Dependency attribution validity: {metrics['dependency_attribution_validity']:.3f}"
     )
+    lines.append(f"- Stage coverage: {metrics['stage_coverage']:.3f}")
+    lines.append(f"- LLM first-catch rate: {metrics['llm_stage_catch_rate']:.3f}")
+    lines.append(f"- LLM any-match rate: {metrics['llm_any_match_rate']:.3f}")
     lines.append("")
 
     lines.append("## Security Analysis")
@@ -496,7 +567,10 @@ def generate_phase5_outputs(
         annotations_by_module[annotation.module_id].append(annotation)
 
     for module_id in list(annotations_by_module.keys()):
-        annotations_by_module[module_id] = sorted(annotations_by_module[module_id], key=lambda item: item.step_number)
+        annotations_by_module[module_id] = sorted(
+            annotations_by_module[module_id],
+            key=lambda item: (item.created_at, item.step_number),
+        )
 
     metrics = _compute_metrics(
         module_ids=context.module_ids,

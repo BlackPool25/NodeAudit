@@ -55,11 +55,7 @@ def render_graph_html(
     for edge in edges:
         edge_type = str(edge.get("edge_type", "explicit_import"))
         edge_title = str(edge.get("title", edge_type))
-        formatted_title = (
-            "<div style='max-width:360px'>"
-            f"<b>{edge_type}</b><br>{edge_title}"
-            "</div>"
-        )
+        formatted_title = f"type: {edge_type}\n{edge_title}"
         net.add_edge(
             source=str(edge["source"]),
             to=str(edge["target"]),
@@ -117,5 +113,44 @@ def render_graph_html(
     )
     if "<title>" in html:
         html = html.replace("<title></title>", f"<title>{title}</title>")
+    tooltip_style = (
+        "<style>"
+        ".vis-tooltip {"
+        " background: #fffdf8 !important;"
+        " border: 1px solid #d6d3d1 !important;"
+        " border-radius: 8px !important;"
+        " box-shadow: 0 8px 24px rgba(15,23,42,0.15) !important;"
+        " color: #1f2937 !important;"
+        " font-family: 'IBM Plex Sans','Segoe UI',sans-serif !important;"
+        " font-size: 12px !important;"
+        " line-height: 1.35 !important;"
+        " white-space: pre-line !important;"
+        " max-width: 420px !important;"
+        " padding: 10px 12px !important;"
+        " }"
+        "</style>"
+    )
+    html = html.replace("</head>", f"{tooltip_style}</head>")
+    bridge_script = (
+        "<script>\n"
+        "(function () {\n"
+        "  function bindNodeClick() {\n"
+        "    if (typeof network === 'undefined') {\n"
+        "      setTimeout(bindNodeClick, 250);\n"
+        "      return;\n"
+        "    }\n"
+        "    network.on('click', function (params) {\n"
+        "      if (!params.nodes || params.nodes.length === 0) { return; }\n"
+        "      var moduleId = params.nodes[0];\n"
+        "      if (window.parent && window.parent !== window) {\n"
+        "        window.parent.postMessage({ type: 'graphreview-node-select', moduleId: moduleId }, '*');\n"
+        "      }\n"
+        "    });\n"
+        "  }\n"
+        "  bindNodeClick();\n"
+        "})();\n"
+        "</script>"
+    )
+    html = html.replace("</body>", f"{bridge_script}</body>")
     output.write_text(html, encoding="utf-8")
     return output

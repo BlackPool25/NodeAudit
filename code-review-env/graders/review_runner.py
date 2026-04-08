@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import time
 import uuid
 from pathlib import Path
@@ -13,6 +14,8 @@ from graph.graph_manager import GraphManager
 from graders.easy_grader import EasyGrader
 from graders.hard_grader import HardGrader
 from graders.medium_grader import MediumGrader
+from llm.hard_issue_finder import HardIssueFinder, ProposedIssue
+from parser.semantic_checks import detect_semantic_issues
 from visualizer.report_generator import GeneratedArtifacts, generate_phase5_outputs
 
 
@@ -29,7 +32,12 @@ def _action_from_finding(tool: str, severity: str, line: int, message: str) -> l
     return actions
 
 
-def _build_actions_for_module(store: Store, graph: GraphManager, module_id: str) -> list[ReviewAction]:
+def _build_actions_for_module(
+    store: Store,
+    graph: GraphManager,
+    module_id: str,
+    grader_level: str,
+) -> list[ReviewAction]:
     findings = store.get_findings(module_id)
     actions: list[ReviewAction] = []
     for finding in findings:
@@ -52,11 +60,100 @@ def _build_actions_for_module(store: Store, graph: GraphManager, module_id: str)
             )
         )
 
+    if grader_level in {"medium", "hard"}:
+        node = store.get_node(module_id)
+        if node is not None:
+            semantic_issues = detect_semantic_issues(node.raw_code)
+            for issue in semantic_issues:
+                actions.append(
+                    ReviewAction(
+                        action_type=ActionType.FLAG_BUG,
+                        target_line=max(issue.line, 1),
+                    )
+                )
+
+    if grader_level == "hard":
+        node = store.get_node(module_id)
+        if node is not None:
+            existing_findings = [
+                {
+                    "tool": finding.tool,
+                    "line": finding.line,
+                    "code": finding.code,
+                    "severity": finding.severity.value,
+                    "message": finding.message,
+                }
+                for finding in findings
+            ]
+            finder = HardIssueFinder()
+            proposals = finder.propose(
+                module_id=module_id,
+                raw_code=node.raw_code,
+                ast_summary=node.ast_summary,
+                existing_findings=existing_findings,
+            )
+            for proposal in _filter_hard_proposals(proposals, node.raw_code, findings):
+                if proposal.category == "security":
+                    flag = ActionType.FLAG_SECURITY
+                elif proposal.category == "style":
+                    flag = ActionType.FLAG_STYLE
+                else:
+                    flag = ActionType.FLAG_BUG
+                actions.append(
+                    ReviewAction(
+                        action_type=flag,
+                        target_line=max(proposal.line, 1),
+                    )
+                )
+                actions.append(
+                    ReviewAction(
+                        action_type=ActionType.ADD_COMMENT,
+                        content=(
+                            f"[hard-llm] {proposal.title}: {proposal.rationale} "
+                            f"(confidence={proposal.confidence:.2f})"
+                        ),
+                    )
+                )
+                actions.append(
+                    ReviewAction(
+                        action_type=ActionType.ADD_COMMENT,
+                        content=f"[semantic-{issue.stage}] {issue.message}",
+                    )
+                )
+
     if findings:
+        actions.append(ReviewAction(action_type=ActionType.REQUEST_CHANGES))
+    elif grader_level in {"medium", "hard"} and actions:
         actions.append(ReviewAction(action_type=ActionType.REQUEST_CHANGES))
     else:
         actions.append(ReviewAction(action_type=ActionType.APPROVE))
     return actions
+
+
+def _filter_hard_proposals(
+    proposals: list[ProposedIssue],
+    raw_code: str,
+    findings: list[object],
+) -> list[ProposedIssue]:
+    threshold = float(os.environ.get("GRAPHREVIEW_HARD_PROPOSAL_MIN_CONFIDENCE", "0.7"))
+    lines = raw_code.splitlines()
+    max_line = max(len(lines), 1)
+    accepted: list[ProposedIssue] = []
+    for proposal in proposals:
+        if proposal.confidence < threshold:
+            continue
+        if proposal.line < 1 or proposal.line > max_line:
+            continue
+        if not proposal.rationale or len(proposal.rationale.strip()) < 20:
+            continue
+        snippet = lines[proposal.line - 1].strip().lower() if proposal.line - 1 < len(lines) else ""
+        if not snippet:
+            continue
+        rationale = proposal.rationale.lower()
+        if snippet and snippet[:24] not in rationale and not any(token in rationale for token in snippet.split()[:2]):
+            continue
+        accepted.append(proposal)
+    return accepted
 
 
 def _resolve_module_scope(graph: GraphManager, module_filter: list[str] | None, hops: int) -> list[str]:
@@ -120,7 +217,7 @@ def run_review(
     for idx, module_id in enumerate(module_order, start=1):
         if show_progress:
             print(f"[REVIEW] {idx}/{total_modules} module={module_id}", flush=True)
-        actions = _build_actions_for_module(store, graph, module_id)
+        actions = _build_actions_for_module(store, graph, module_id, grader_level)
         summary = grader.grade_episode(
             module_id=module_id,
             task_id=f"{grader_level}_review",

@@ -73,6 +73,20 @@ def _analyze_file(path: Path, target_dir: Path) -> tuple[Path, object, list[obje
     return path, parsed, issues, summary, chunk_result
 
 
+def _render_progress(prefix: str, current: int, total: int, label: str) -> None:
+    if total <= 0:
+        return
+    width = 24
+    ratio = max(0.0, min(1.0, current / total))
+    filled = int(width * ratio)
+    bar = "#" * filled + "-" * (width - filled)
+    clipped = label if len(label) <= 48 else f"{label[:45]}..."
+    line = f"{prefix} [{bar}] {current}/{total} {clipped}"
+    print(f"\r{line:<120}", end="", flush=True)
+    if current >= total:
+        print("", flush=True)
+
+
 def seed_project(target_dir: Path, db_path: str | None = None, force: bool = False) -> dict[str, object]:
     target_dir = target_dir.resolve()
     store = Store(source_root=str(target_dir), db_path=db_path)
@@ -113,7 +127,7 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
             analysis_by_path[path] = (parsed, issues, summary, chunk_result)
             if _progress_enabled():
                 rel = path.relative_to(target_dir).as_posix()
-                print(f"[SEED] analyzed {idx}/{total_files}: {rel}", flush=True)
+                _render_progress("[SEED] analyzed", idx, total_files, rel)
 
     parsed_modules = [analysis_by_path[path][0] for path in py_files]
     module_ids = {parsed.module_id for parsed in parsed_modules}
@@ -127,7 +141,7 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
 
         if _progress_enabled():
             rel = path.relative_to(target_dir).as_posix()
-            print(f"[SEED] storing {idx}/{total_files}: {rel}", flush=True)
+            _render_progress("[SEED] storing", idx, total_files, rel)
 
         store.upsert_node(
             module_id=parent.module_id,
@@ -162,7 +176,11 @@ def seed_project(target_dir: Path, db_path: str | None = None, force: bool = Fal
 
     edges = build_edges(parsed_modules, module_ids, chunk_ids_by_parent)
     edge_summarizer = EdgeSummarizer()
-    for edge in edges:
+    total_edges = len(edges)
+    for idx, edge in enumerate(edges, start=1):
+        if _progress_enabled():
+            edge_label = f"{edge.source_module_id} -> {edge.target_module_id}"
+            _render_progress("[SEED] edges", idx, total_edges, edge_label)
         connection_summary = edge_summarizer.summarize(
             EdgeSummaryInput(
                 source_module_id=edge.source_module_id,

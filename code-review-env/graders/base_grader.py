@@ -8,7 +8,7 @@ from typing import Iterable
 from db.schema import LinterFinding, ReviewStatus
 from db.store import Store
 from env.action import ActionType, ReviewAction
-from env.reward import EpisodeGradeSummary, ReviewReward, normalize_reward
+from env.reward import EpisodeGradeSummary, ReviewReward, RewardReason, make_reward, normalize_reward
 
 
 @dataclass
@@ -46,6 +46,19 @@ class BaseGrader(ABC):
 
         for step_number, action in enumerate(actions, start=1):
             reward = self.grade_action(module_id, action, findings, state)
+
+            if (
+                task_id.startswith("hard")
+                and reward.matched_finding_id is not None
+                and self.store.finding_previously_caught(module_id, reward.matched_finding_id, exclude_task_prefix="hard")
+            ):
+                reward = make_reward(
+                    RewardReason.NOOP,
+                    f"Finding {reward.matched_finding_id} already caught in earlier stage; hard stage requires new verified evidence",
+                    matched_finding_id=reward.matched_finding_id,
+                    metadata={"already_caught_prior_stage": True},
+                )
+
             state.seen_actions.append(action)
             rewards.append(reward)
             self._persist_step(

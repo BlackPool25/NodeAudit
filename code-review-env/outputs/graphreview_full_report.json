@@ -1,0 +1,1049 @@
+{
+  "edges": [],
+  "episode_id": null,
+  "metrics": {
+    "confidence_score": 0.5133333333333334,
+    "consistency": 1.0,
+    "dependency_attribution_validity": 0.0,
+    "f1": 0.4666666666666667,
+    "false_negatives": 0,
+    "false_positives": 16,
+    "llm_any_match_rate": 1.0,
+    "llm_stage_catch_rate": 0.0,
+    "precision": 0.30434782608695654,
+    "recall": 1.0,
+    "security_coverage": 0.0,
+    "severity_weighted_coverage": 1.0,
+    "stage_coverage": 1.0,
+    "true_positives": 7
+  },
+  "nodes": [
+    {
+      "caught_stages": [
+        "easy",
+        "hard",
+        "medium"
+      ],
+      "linter_findings": [
+        {
+          "caught_stage": "easy",
+          "code": "C0114",
+          "id": 2692,
+          "line": 1,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "Missing module docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "caught_stage": "easy",
+          "code": "E0402",
+          "id": 2693,
+          "line": 1,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "Attempted relative import beyond top-level package",
+          "severity": "high",
+          "tool": "pylint"
+        },
+        {
+          "caught_stage": "easy",
+          "code": "E0402",
+          "id": 2694,
+          "line": 2,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "Attempted relative import beyond top-level package",
+          "severity": "high",
+          "tool": "pylint"
+        },
+        {
+          "caught_stage": "easy",
+          "code": "W0105",
+          "id": 2695,
+          "line": 5,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "String statement has no effect",
+          "severity": "medium",
+          "tool": "pylint"
+        },
+        {
+          "caught_stage": "easy",
+          "code": "C0116",
+          "id": 2696,
+          "line": 8,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "Missing function or method docstring",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "caught_stage": "easy",
+          "code": "R0914",
+          "id": 2697,
+          "line": 8,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "Too many local variables (18/15)",
+          "severity": "low",
+          "tool": "pylint"
+        },
+        {
+          "caught_stage": "easy",
+          "code": "C0304",
+          "id": 2698,
+          "line": 73,
+          "llm_first_catch": false,
+          "llm_verified": true,
+          "message": "Final newline missing",
+          "severity": "low",
+          "tool": "pylint"
+        }
+      ],
+      "module_id": "bfs",
+      "module_shape": "functions=main",
+      "name": "bfs",
+      "primary_caught_stage": "easy",
+      "raw_code": "from .node import Node\nfrom .breadth_first_search import breadth_first_search\n\n\n\"\"\"\nDriver to test breadth first search\n\"\"\"\ndef main():\n    # Case 1: Strongly connected graph\n    # Output: Path found!\n    station1 = Node(\"Westminster\")\n    station2 = Node(\"Waterloo\", None, [station1])\n    station3 = Node(\"Trafalgar Square\", None, [station1, station2])\n    station4 = Node(\"Canary Wharf\",  None, [station2, station3])\n    station5 = Node(\"London Bridge\",  None, [station4, station3])\n    station6 = Node(\"Tottenham Court Road\",  None, [station5, station4])\n\n    if breadth_first_search(station6, station1):\n        print(\"Path found!\", end=\" \")\n    else:\n        print(\"Path not found!\", end=\" \")\n    print()\n\n    # Case 2: Branching graph\n    # Output: Path found!\n    nodef =  Node(\"F\")\n    nodee =  Node(\"E\")\n    noded =  Node(\"D\")\n    nodec =  Node(\"C\", None, [nodef])\n    nodeb =  Node(\"B\", None, [nodee])\n    nodea =  Node(\"A\", None, [nodeb, nodec, noded])\n\n    if breadth_first_search(nodea, nodee):\n        print(\"Path found!\", end=\" \")\n    else:\n        print(\"Path not found!\", end=\" \")\n    print()\n\n    # Case 3: Two unconnected nodes in graph\n    # Output: Path not found\n    if breadth_first_search(nodef, nodee):\n        print(\"Path found!\", end=\" \")\n    else:\n        print(\"Path not found!\", end=\" \")\n    print()\n\n    # Case 4: One node graph\n    # Output: Path found!\n    if breadth_first_search(nodef, nodef):\n        print(\"Path found!\", end=\" \")\n    else:\n        print(\"Path not found!\", end=\" \")\n    print()\n\n    # Case 5: Graph with cycles\n    # Output: Path found!\n    node1 = Node(\"1\")\n    node2 = Node(\"2\")\n    node3 = Node(\"3\")\n    node4 = Node(\"4\", None, [node1])\n    node5 = Node(\"5\", None, [node2])\n    node6 = Node(\"6\", None, [node5, node4, node3])\n\n    node2.successors = [node6]\n\n    if breadth_first_search(node6, node1):\n        print(\"Path found!\", end=\" \")\n    else:\n        print(\"Path not found!\", end=\" \")\n    print()\n\nif __name__ == \"__main__\":\n    main()",
+      "reviews": [
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.698497",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0114 at line 1",
+            "matched_finding_id": 2692,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.700920",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 2,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.702730",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Matched finding pylint:E0402 at line 1",
+            "matched_finding_id": 2693,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.704511",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 4,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.706097",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Matched finding pylint:E0402 at line 2",
+            "matched_finding_id": 2694,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 5,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.707636",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 6,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.709143",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Matched finding pylint:W0105 at line 5",
+            "matched_finding_id": 2695,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 7,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.710787",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 8,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.712404",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 8",
+            "matched_finding_id": 2696,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 9,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.713931",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 10,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.715479",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:R0914 at line 8",
+            "matched_finding_id": 2697,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 11,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.717130",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 12,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.718627",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0304 at line 73",
+            "matched_finding_id": 2698,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 13,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.720096",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Action has no easy-grade impact",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 14,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "caught_stage": "easy",
+          "created_at": "2026-04-08T04:47:20.721664",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 15,
+          "task_id": "easy_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.730212",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0114 at line 1",
+            "matched_finding_id": 2692,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 1,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.732441",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 1",
+            "matched_finding_id": 2692,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 2,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.734363",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Matched finding pylint:E0402 at line 1",
+            "matched_finding_id": 2693,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 3,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.735952",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 1",
+            "matched_finding_id": 2693,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 4,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.737446",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Matched finding pylint:E0402 at line 2",
+            "matched_finding_id": 2694,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 5,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.738990",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 1",
+            "matched_finding_id": 2693,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 6,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.740556",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Matched finding pylint:W0105 at line 5",
+            "matched_finding_id": 2695,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 7,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.742157",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 5",
+            "matched_finding_id": 2695,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 8,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.743713",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0116 at line 8",
+            "matched_finding_id": 2696,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 9,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.745377",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 8",
+            "matched_finding_id": 2696,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 10,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.747211",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:R0914 at line 8",
+            "matched_finding_id": 2697,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 11,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.748842",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 8",
+            "matched_finding_id": 2697,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 12,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.750453",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Matched finding pylint:C0304 at line 73",
+            "matched_finding_id": 2698,
+            "metadata": {},
+            "normalized_reward": 0.75,
+            "raw_reward": 0.5,
+            "reward_reason": "correct_flag"
+          },
+          "reward_given": 0.5,
+          "step_number": 13,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.752051",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Comment aligns with finding at line 73",
+            "matched_finding_id": 2698,
+            "metadata": {},
+            "normalized_reward": 0.65,
+            "raw_reward": 0.3,
+            "reward_reason": "accurate_comment"
+          },
+          "reward_given": 0.3,
+          "step_number": 14,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.753623",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "No matching finding",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.4,
+            "raw_reward": -0.2,
+            "reward_reason": "false_positive_flag"
+          },
+          "reward_given": -0.2,
+          "step_number": 15,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "caught_stage": "medium",
+          "created_at": "2026-04-08T04:47:20.755110",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 16,
+          "task_id": "medium_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.120557",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Finding 2692 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2692,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 1,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.135993",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2692 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2692,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 2,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.150217",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Finding 2693 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2693,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 3,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.165831",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2693 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2693,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 4,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.181165",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Finding 2694 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2694,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 5,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.193518",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2693 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2693,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 6,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.206086",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "Finding 2695 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2695,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 7,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.212502",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2695 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2695,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 8,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.214717",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Finding 2696 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2696,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 9,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.216810",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2696 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2696,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 10,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.218848",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Finding 2697 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2697,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 11,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.221092",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2697 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2697,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 12,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_STYLE",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.223391",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_STYLE",
+            "feedback": "Finding 2698 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2698,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 13,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "ADD_COMMENT",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.225669",
+          "is_amendment": false,
+          "note": {
+            "action_type": "ADD_COMMENT",
+            "feedback": "Finding 2698 already caught in earlier stage; hard stage requires new verified evidence",
+            "matched_finding_id": 2698,
+            "metadata": {
+              "already_caught_prior_stage": true
+            },
+            "normalized_reward": 0.5,
+            "raw_reward": 0.0,
+            "reward_reason": "noop"
+          },
+          "reward_given": 0.0,
+          "step_number": 14,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "FLAG_BUG",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.227478",
+          "is_amendment": false,
+          "note": {
+            "action_type": "FLAG_BUG",
+            "feedback": "No matching finding",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.4,
+            "raw_reward": -0.2,
+            "reward_reason": "false_positive_flag"
+          },
+          "reward_given": -0.2,
+          "step_number": 15,
+          "task_id": "hard_review"
+        },
+        {
+          "action_type": "REQUEST_CHANGES",
+          "attributed_to": null,
+          "caught_stage": "hard",
+          "created_at": "2026-04-08T04:47:58.229057",
+          "is_amendment": false,
+          "note": {
+            "action_type": "REQUEST_CHANGES",
+            "feedback": "Changes requested",
+            "matched_finding_id": null,
+            "metadata": {},
+            "normalized_reward": 0.6,
+            "raw_reward": 0.2,
+            "reward_reason": "episode_completion_bonus"
+          },
+          "reward_given": 0.2,
+          "step_number": 16,
+          "task_id": "hard_review"
+        }
+      ],
+      "security_findings": [],
+      "status": "changes_requested",
+      "summary": "exports: [main()->None] | issues: 7 | depends_on: [breadth_first_search, breadth_first_search.breadth_first_search, node, node.Node]"
+    }
+  ],
+  "report_schema_version": "1.0.0",
+  "rl_integrity": {
+    "deterministic_replay_notes": "easy/medium deterministic by construction; hard uses judge with temperature=0",
+    "reward_causality_tracked": true,
+    "trajectory_reconstructable": true
+  },
+  "scope_modules": [
+    "bfs"
+  ],
+  "source_root": "/home/lightdesk/Downloads/Projects/NodeAudit/Tests"
+}

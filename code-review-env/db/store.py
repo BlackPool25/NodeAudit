@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterator, Optional
+import json
 
 from pydantic import BaseModel
 from sqlmodel import Session, delete, select
@@ -501,6 +502,29 @@ class Store:
                 node.updated_at = datetime.now(UTC)
                 session.add(node)
             session.commit()
+
+    def finding_previously_caught(self, module_id: str, finding_id: int, exclude_task_prefix: str = "hard") -> bool:
+        with Session(self.engine) as session:
+            annotations = list(
+                session.exec(
+                    select(ReviewAnnotation).where(
+                        ReviewAnnotation.source_root == self.config.source_root,
+                        ReviewAnnotation.module_id == module_id,
+                    )
+                ).all()
+            )
+
+        for annotation in annotations:
+            task_id = annotation.task_id or ""
+            if exclude_task_prefix and task_id.startswith(exclude_task_prefix):
+                continue
+            try:
+                payload = json.loads(annotation.note)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict) and int(payload.get("matched_finding_id") or -1) == finding_id:
+                return True
+        return False
 
 
 def _build_parser() -> argparse.ArgumentParser:

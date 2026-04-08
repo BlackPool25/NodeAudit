@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GraphReview Results Console</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/github.min.css" />
   <style>
     :root {
       --bg: #f4f1ea;
@@ -179,21 +180,51 @@
     }
 
     .node-list {
-      max-height: 260px;
+      max-height: 320px;
       overflow: auto;
     }
 
+    .module-search {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 0.82rem;
+      background: #fff;
+    }
+
     .node-row {
-      padding: 6px;
-      border: 1px solid transparent;
+      padding: 8px;
+      border: 1px solid #e5e7eb;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.82rem;
+      margin-bottom: 6px;
+      background: #fff;
     }
 
     .node-row:hover {
       border-color: var(--accent);
       background: #f0fdfa;
+    }
+
+    .node-row.active {
+      border-color: var(--accent-2);
+      background: #fffbeb;
+    }
+
+    .node-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .node-meta {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.74rem;
     }
 
     pre {
@@ -207,6 +238,33 @@
       border: 1px solid #e2e8f0;
       border-radius: 6px;
       padding: 8px;
+    }
+
+    .module-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .module-card h4 {
+      margin: 0;
+      font-size: 0.92rem;
+    }
+
+    .code-wrap {
+      max-height: 280px;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .hljs {
+      background: #f8fafc;
     }
 
     @media (max-width: 1200px) {
@@ -263,16 +321,27 @@
 
       <article class="section">
         <h3>Modules in Scope</h3>
+        <input id="moduleSearch" class="module-search" type="text" placeholder="Search module name..." />
         <div class="node-list" id="nodes"></div>
       </article>
 
       <article class="section">
         <h3>Selected Module Detail</h3>
-        <pre id="moduleDetail">Select a module to inspect report fields, findings, and reviews.</pre>
+        <div id="moduleDetail" class="muted">Select a module to inspect report fields, findings, and reviews.</div>
+        <button id="rawJsonBtn" type="button" style="margin-top:8px; display:none;">View Raw Module Report JSON</button>
+        <pre id="moduleRawJson" style="display:none; margin-top:8px;"></pre>
+      </article>
+
+      <article class="section">
+        <h3>Raw Code</h3>
+        <div class="code-wrap">
+          <pre><code id="rawCode" class="language-python">Select a module to view raw code.</code></pre>
+        </div>
       </article>
     </section>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
   <script>
     const resultsEl = document.getElementById('results');
     const statusEl = document.getElementById('status');
@@ -282,9 +351,14 @@
     const diagEl = document.getElementById('diag');
     const schemaRows = document.getElementById('schemaRows');
     const nodesEl = document.getElementById('nodes');
+    const moduleSearchEl = document.getElementById('moduleSearch');
     const moduleDetailEl = document.getElementById('moduleDetail');
+    const rawCodeEl = document.getElementById('rawCode');
+    const rawJsonBtn = document.getElementById('rawJsonBtn');
+    const moduleRawJsonEl = document.getElementById('moduleRawJson');
 
     let currentNodes = [];
+    let selectedModuleId = '';
 
     function fmtPct(value) {
       return `${(Number(value || 0) * 100).toFixed(1)}%`;
@@ -343,23 +417,103 @@
         <div class="kv"><span>Isolated Nodes</span><strong class="${isolationClass}">${connectivity.isolated_nodes} (${fmtPct(connectivity.isolation_ratio)})</strong></div>
         <div class="kv"><span>Precision / Recall / F1</span><strong>${Number(metrics.precision || 0).toFixed(3)} / ${Number(metrics.recall || 0).toFixed(3)} / ${Number(metrics.f1 || 0).toFixed(3)}</strong></div>
         <div class="kv"><span>Security Coverage</span><strong>${Number(metrics.security_coverage || 0).toFixed(3)}</strong></div>
+        <div class="kv"><span>Stage Coverage</span><strong>${Number(metrics.stage_coverage || 0).toFixed(3)}</strong></div>
+        <div class="kv"><span>LLM First-Catch Rate</span><strong>${Number(metrics.llm_stage_catch_rate || 0).toFixed(3)}</strong></div>
+        <div class="kv"><span>LLM Any-Match Rate</span><strong>${Number(metrics.llm_any_match_rate || 0).toFixed(3)}</strong></div>
       `;
+    }
+
+    function formatModuleDetail(node) {
+      const findings = node.linter_findings || [];
+      const reviews = node.reviews || [];
+      const security = node.security_findings || [];
+      const lastReview = reviews.length ? reviews[reviews.length - 1] : null;
+
+      const findingList = findings.slice(0, 8).map((f) => (
+        `<li>[${String(f.severity || '').toUpperCase()}] ${f.code} at line ${f.line}: ${f.message} | caught_stage=${f.caught_stage || 'unmatched'} | llm_first_catch=${f.llm_first_catch ? 'yes' : 'no'} | llm_verified=${f.llm_verified ? 'yes' : 'no'}</li>`
+      )).join('');
+      const reviewList = reviews.slice(-6).reverse().map((r) => (
+        `<li>step ${r.step_number} | stage=${r.caught_stage || '-'} | ${r.action_type} | reward ${Number(r.reward_given || 0).toFixed(2)}</li>`
+      )).join('');
+
+      return `
+        <div class="module-card">
+          <h4>${node.module_id}</h4>
+          <div class="kv"><span>Status</span><strong>${node.status}</strong></div>
+          <div class="kv"><span>Primary Caught Stage</span><strong>${node.primary_caught_stage || '-'}</strong></div>
+          <div class="kv"><span>Caught Stages</span><strong>${(node.caught_stages || []).join(', ') || '-'}</strong></div>
+          <div class="kv"><span>Summary</span><strong>${node.summary || '-'}</strong></div>
+          <div class="kv"><span>Shape</span><strong>${node.module_shape || '-'}</strong></div>
+          <div class="kv"><span>Findings</span><strong>${findings.length}</strong></div>
+          <div class="kv"><span>Security Findings</span><strong>${security.length}</strong></div>
+          <div class="kv"><span>Reviews</span><strong>${reviews.length}</strong></div>
+          <div class="kv"><span>Latest Review</span><strong>${lastReview ? `${lastReview.action_type} (step ${lastReview.step_number})` : '-'}</strong></div>
+        </div>
+        <div class="module-card">
+          <h4>Top Findings</h4>
+          <ul>${findingList || '<li>None</li>'}</ul>
+        </div>
+        <div class="module-card">
+          <h4>Recent Reviews</h4>
+          <ul>${reviewList || '<li>None</li>'}</ul>
+        </div>
+      `;
+    }
+
+    function showModule(node) {
+      if (!node) {
+        return;
+      }
+      selectedModuleId = node.module_id;
+      moduleDetailEl.classList.remove('muted');
+      moduleDetailEl.innerHTML = formatModuleDetail(node);
+      rawCodeEl.textContent = node.raw_code || '# No raw code available';
+      if (window.hljs) {
+        window.hljs.highlightElement(rawCodeEl);
+      }
+      rawJsonBtn.style.display = 'inline-block';
+      moduleRawJsonEl.style.display = 'none';
+      moduleRawJsonEl.textContent = JSON.stringify(node, null, 2);
+      document.querySelectorAll('.node-row').forEach((el) => {
+        el.classList.toggle('active', el.dataset.moduleId === selectedModuleId);
+      });
     }
 
     function renderNodes(report) {
       currentNodes = report.nodes || [];
       nodesEl.innerHTML = '';
-      currentNodes.forEach((node) => {
+      const query = (moduleSearchEl.value || '').trim().toLowerCase();
+      const filtered = currentNodes.filter((node) => !query || node.module_id.toLowerCase().includes(query));
+      filtered.forEach((node) => {
         const row = document.createElement('div');
         row.className = 'node-row';
+        row.dataset.moduleId = node.module_id;
         const findings = (node.linter_findings || []).length;
         const reviews = (node.reviews || []).length;
-        row.textContent = `${node.module_id} | findings:${findings} reviews:${reviews} status:${node.status}`;
+        row.innerHTML = `
+          <div class="node-title">${node.module_id}</div>
+          <div class="node-meta">
+            <span>status:${node.status}</span>
+            <span>findings:${findings}</span>
+            <span>reviews:${reviews}</span>
+          </div>
+        `;
         row.addEventListener('click', () => {
-          moduleDetailEl.textContent = JSON.stringify(node, null, 2);
+          showModule(node);
         });
         nodesEl.appendChild(row);
       });
+
+      if (!filtered.length) {
+        nodesEl.innerHTML = '<div class="muted">No modules match search.</div>';
+      }
+
+      if (selectedModuleId) {
+        const selected = currentNodes.find((node) => node.module_id === selectedModuleId);
+        if (selected) {
+          showModule(selected);
+        }
+      }
     }
 
     async function selectResult(result, itemEl) {
@@ -381,9 +535,36 @@
       renderDiagnostics(detail.connectivity, detail.report.metrics || {});
       renderSchema(detail.db_columns || {});
       renderNodes(detail.report || {});
+      moduleDetailEl.classList.add('muted');
       moduleDetailEl.textContent = 'Select a module to inspect report fields, findings, and reviews.';
+      rawCodeEl.textContent = 'Select a module to view raw code.';
+      rawJsonBtn.style.display = 'none';
+      moduleRawJsonEl.style.display = 'none';
+      moduleRawJsonEl.textContent = '';
+      selectedModuleId = '';
       statusEl.textContent = `Loaded ${result.report_path}`;
     }
+
+    rawJsonBtn.addEventListener('click', () => {
+      const isHidden = moduleRawJsonEl.style.display === 'none';
+      moduleRawJsonEl.style.display = isHidden ? 'block' : 'none';
+      rawJsonBtn.textContent = isHidden ? 'Hide Raw Module Report JSON' : 'View Raw Module Report JSON';
+    });
+
+    moduleSearchEl.addEventListener('input', () => {
+      renderNodes({ nodes: currentNodes });
+    });
+
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || data.type !== 'graphreview-node-select' || !data.moduleId) {
+        return;
+      }
+      const target = currentNodes.find((node) => node.module_id === data.moduleId);
+      if (target) {
+        showModule(target);
+      }
+    });
 
     async function init() {
       try {
