@@ -677,7 +677,7 @@ def run_deterministic_analysis(payload: AnalyzerRunRequest) -> AnalyzerRunRespon
 def bootstrap_training() -> TrainingBootstrapResponse:
 	config = load_runtime_config()
 	weight_manager = WeightSafetyManager(Path(config.llm_weight_manifest_dir))
-	model_name = "qwen2.5-coder-7b-instruct-q6_k"
+	model_name = os.getenv("MODEL_NAME", "gemma4:e4b")
 	try:
 		weight_path = weight_manager.load_verified(model_name)
 		sha256 = weight_manager.checksum(weight_path)

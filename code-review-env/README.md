@@ -1,428 +1,127 @@
-# CodeReviewEnv
+# GraphReview — Dependency-Aware RL Environment for Python Code Review
 
-Dependency-aware RL environment for Python code review, backed by persistent SQLite/libSQL graph storage.
+GraphReview is an OpenEnv-compliant reinforcement learning environment where an LLM
+agent learns to review Python code with full dependency graph awareness.
 
-## Implemented Through Phase 8
+## What it does
 
-Phase 1:
+- Parses a Python codebase into a persistent SQLite-backed dependency graph
+- Pre-computes ground truth linter findings (pylint + bandit) at seed time
+- Presents an agent with one module at a time, with compressed AST summaries of neighbors
+- Scores agent actions against real ground truth — no training data needed
+- Accumulates review annotations back onto graph nodes
 
-- Seed pipeline parses Python modules, runs linters, and stores nodes/edges/findings in DB.
-- Hash-based cache avoids unnecessary re-parse.
+## Architecture
 
-Phase 2:
+````
+Codebase (.py files)
+      │
+      ▼
+  db/seed.py ──► SQLite DB (modules, edges, linter_flags)
+      │
+      ▼
+  env/environment.py
+  ┌───────────────────────────────────┐
+  │  reset() → CodeObservation        │
+  │  step(ReviewAction) → reward      │
+  │  state() → GraphState             │
+  └───────────────────────────────────┘
+      │
+      ▼
+  graders/
+  ├── easy_grader.py   (linter match — deterministic)
+  ├── medium_grader.py (AST + keyword match — deterministic)
+  └── hard_grader.py   (graph consistency + LLM judge — temperature=0)
+      │
+      ▼
+  inference.py (baseline agent — OpenAI-compatible client)
+````
 
-- Graph manager loads graph from DB and exposes deterministic traversal and neighbor queries.
-- Observation builder enforces strict 2000-token hard cap.
+## Tasks
 
-Phase 3:
-
-- Typed actions/rewards and deterministic easy/medium graders.
-- Hard grader includes deterministic graph checks + temperature=0 LLM judge.
-- Review annotations are persisted per step.
-
-Phase 4:
-
-- Implemented `CodeReviewEnv.reset()` / `step()` / `state()` runtime.
-- Added task registry and task orchestration for `style_review`, `logic_review`, `cascade_review`.
-- Added operational FastAPI endpoints for automation and future phases.
-- Added module override policy for direct module reviews.
-
-Phase 5:
-
-- Added `visualizer/pyvis_renderer.py` for standalone interactive dependency graph HTML output.
-- Added `visualizer/report_generator.py` for markdown + JSON reports from persisted DB state.
-- Added module-filtered report scope (seed modules + related dependency neighbors by hop count).
-- Added confidence scoring that balances precision/recall with severity/security coverage and attribution validity.
-- Added API endpoint to generate artifacts and CLI support for real project runs.
-
-Phase 6:
-
-- Added adaptive hard-grader fusion: deterministic graph gate + primary judge + verifier judge.
-- Added disagreement-aware reweighting to reduce single-model catastrophic errors.
-- Added per-edge `connection_summary` generation using LLM with deterministic fallback.
-- Added optional LoRA trajectory logging for cross-project learning data collection.
-- Added root `.env` support for centralized configuration management.
-
-Phase 7:
-
-- Added deterministic analyzer run/finding persistence (`AnalyzerRun`, `AnalyzerFinding`).
-- Added training harness with GGUF weight verification and non-regression checks.
-
-Phase 8:
-
-- Expanded analyzer pipeline to include pylint, pyflakes, bandit, mypy, pyright, semgrep, and vulture.
-- Switched easy/medium/hard graders to analyzer-native truth mapping by task level.
-- Refactored hard grading to deterministic semgrep + graph attribution checks.
-- Added training run registry in SQLite (`TrainingRun`) with precision/recall and drift metrics.
-- Added canonical challenge fixture and validator in `sample_project_canonical/`.
-- Extended FastAPI UI with training pipeline controls and run history.
-
-## Core Runtime Components
-
-- `env/environment.py`
-  - Persistent episode runtime over SQLite.
-  - Deterministic module progression and reward accumulation.
-  - Task-aware reset/step/state semantics.
-
-- `env/state.py`
-  - Strict Pydantic state models for episode and graph status.
-
-- `tasks/task_registry.py`
-  - Static task registration and dependency-aware module resolution.
-  - Direct review policy:
-    - easy task: optional direct module override only.
-    - medium/hard tasks: module override expands one-hop dependencies for context reliability.
-
-- `server/app.py`
-  - API endpoints:
-    - `POST /reset`
-    - `POST /step`
-    - `GET /state`
-    - `GET /health`
-    - `GET /tasks`
-    - `GET /debug/state`
-    - `POST /debug/reset-annotations`
-    - `POST /tasks/{task_id}/run`
-    - `GET /reports/accuracy`
-    - `POST /reports/generate`
-    - `GET /graph/export`
-    - `POST /analysis/run`
-    - `POST /training/bootstrap`
-    - `POST /training/run`
-    - `GET /training/runs`
-
-- `visualizer/pyvis_renderer.py`
-  - Renders dependency graph with review-aware colors and edge-type styling.
-  - Produces standalone HTML suitable for local and hosted viewing.
-
-- `visualizer/report_generator.py`
-  - Produces:
-    - `*_report.md`
-    - `*_report.json`
-    - `*_graph.html`
-  - Includes:
-    - module-level summaries
-    - security findings analysis
-    - cascade attribution summaries
-    - RL trajectory integrity notes
-    - confidence scoring metrics
-
-## Database and Turso Support
-
-The project remains SQLite-first and supports Turso/libSQL via environment variables.
-
-Primary DB configuration:
-
-- `GRAPHREVIEW_DATABASE_URL`
-  - If set, used directly by SQLAlchemy.
-  - Works for local SQLite and SQLAlchemy-compatible backends.
-
-Turso/libSQL fallback configuration:
-
-- `TURSO_DATABASE_URL` (example: `libsql://your-db.turso.io`)
-- `TURSO_AUTH_TOKEN`
-- `GRAPHREVIEW_REMOTE_SQLITE_URL` (alias of `TURSO_DATABASE_URL`)
-- `GRAPHREVIEW_REMOTE_SQLITE_AUTH_TOKEN` (alias of `TURSO_AUTH_TOKEN`)
-
-When `GRAPHREVIEW_DATABASE_URL` is not set and `TURSO_DATABASE_URL` is set, engine is built as:
-
-- `sqlite+${TURSO_DATABASE_URL}?secure=true`
-with `auth_token` connect arg.
-
-## LLM and Runtime Env Vars
-
-`.env` at project root is auto-loaded by runtime configuration, DB initialization, and server startup.
-
-Judge settings:
-
-- `GRAPHREVIEW_JUDGE_PROVIDER` (default `ollama_openai_compat`)
-- `GRAPHREVIEW_JUDGE_MODEL` (default `gemma4:e4b`)
-- `GRAPHREVIEW_JUDGE_BASE_URL` (default `http://localhost:11434/v1`)
-- `GRAPHREVIEW_JUDGE_API_KEY` (default `ollama`)
-- `GRAPHREVIEW_JUDGE_TIMEOUT_SECONDS` (default `8`)
-- `GRAPHREVIEW_JUDGE_ENABLED` (`true|false`, default `true`)
-- `GRAPHREVIEW_JUDGE_MAX_CALLS` (default `200`)
-- `GRAPHREVIEW_JUDGE_MAX_CONSECUTIVE_FAILURES` (default `3`)
-- `GRAPHREVIEW_JUDGE_THINK` (`false|true|low|medium|high`, default `false`)
-
-Verifier and adaptive fusion settings:
-
-- `GRAPHREVIEW_VERIFIER_ENABLED` (default `true`)
-- `GRAPHREVIEW_VERIFIER_PROVIDER`
-- `GRAPHREVIEW_VERIFIER_MODEL`
-- `GRAPHREVIEW_VERIFIER_BASE_URL`
-- `GRAPHREVIEW_VERIFIER_API_KEY`
-- `GRAPHREVIEW_VERIFIER_TIMEOUT_SECONDS`
-- `GRAPHREVIEW_JUDGE_WEIGHT_DETERMINISTIC` (default `0.5`)
-- `GRAPHREVIEW_JUDGE_WEIGHT_PRIMARY` (default `0.3`)
-- `GRAPHREVIEW_JUDGE_WEIGHT_VERIFIER` (default `0.2`)
-- `GRAPHREVIEW_JUDGE_DISAGREEMENT_THRESHOLD` (default `0.5`)
-
-Edge summary settings:
-
-- `GRAPHREVIEW_EDGE_SUMMARY_ENABLED` (default `false`, enable when you want LLM edge summaries)
-- `GRAPHREVIEW_EDGE_SUMMARY_MODEL`
-- `GRAPHREVIEW_EDGE_SUMMARY_BASE_URL`
-- `GRAPHREVIEW_EDGE_SUMMARY_API_KEY`
-- `GRAPHREVIEW_EDGE_SUMMARY_TIMEOUT_SECONDS`
-- `GRAPHREVIEW_EDGE_SUMMARY_MAX_CALLS`
-
-LoRA trajectory hooks:
-
-- `GRAPHREVIEW_LORA_ENABLED` (default `false`)
-- `GRAPHREVIEW_LORA_DATA_PATH` (default `outputs/lora/transitions.jsonl`)
-
-Hard autonomous issue finder (hard stage):
-
-- `GRAPHREVIEW_HARD_ISSUE_FINDER_ENABLED` (default `true`)
-- `GRAPHREVIEW_HARD_ISSUE_FINDER_MODEL`
-- `GRAPHREVIEW_HARD_ISSUE_FINDER_BASE_URL`
-- `GRAPHREVIEW_HARD_ISSUE_FINDER_API_KEY`
-- `GRAPHREVIEW_HARD_ISSUE_FINDER_TIMEOUT_SECONDS`
-- `GRAPHREVIEW_HARD_ISSUE_FINDER_MAX_ISSUES`
-- `GRAPHREVIEW_HARD_PROPOSAL_MIN_CONFIDENCE` (default `0.70`)
-
-Hard stage behavior is layered:
-
-1. deterministic signals and semantic checks,
-2. LLM proposes new bug hypotheses,
-3. strict precision filters drop low-confidence or weak-evidence claims,
-4. only accepted issues are converted into review actions.
-
-`run_project` mode wiring:
-
-- `--llm-mode fast`: disables judge, verifier, and hard issue finder.
-- `--llm-mode judge`: enables primary judge and hard issue finder.
-- `--llm-mode fused`: enables primary+verifier and hard issue finder.
-
-Generate a LoRA-ready SFT dataset from transitions:
-
-```bash
-python -m llm.lora_finetune --transitions outputs/lora/transitions.jsonl --output outputs/lora/sft_dataset.jsonl
-```
-
-General runtime settings:
-
-- `GRAPHREVIEW_SOURCE_ROOT` (default `sample_project`)
-- `GRAPHREVIEW_DB_PATH` (optional local DB path)
-- `GRAPHREVIEW_DB_ECHO` (`true|false`, default `false`)
-- `GRAPHREVIEW_MAX_STEPS_PER_EPISODE` (default `80`)
-- `GRAPHREVIEW_MAX_FILES` (default `5000`)
-- `GRAPHREVIEW_SEED_WORKERS` (default `min(4, cpu_count)`)
-- `GRAPHREVIEW_PROGRESS` (`true|false`, default `true`)
-- `GRAPHREVIEW_OUTPUT_DIR` (optional report output folder, default `outputs`)
+| Task | Difficulty | Description |
+|------|-----------|-------------|
+| style_review | Easy | Flag style/linting violations in a single module |
+| logic_review | Medium | Identify null-reference logic bug with dependency context |
+| cascade_review | Hard | Trace a bug from root cause across 3 modules |
 
 ## Quickstart
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Seed the database (parse codebase, run linters, store graph)
 python -m db.seed sample_project/
+
+# Start the API server
 uvicorn server.app:app --host 0.0.0.0 --port 8000
+
+# Run the baseline inference agent
+python inference.py sample_project
 ```
 
-Run API smoke checks:
+## Environment Variables
 
 ```bash
-curl -s http://localhost:8000/health
-curl -s http://localhost:8000/tasks
+# LLM provider (any OpenAI-compatible endpoint)
+API_BASE_URL=http://localhost:11434/v1   # Ollama default; use https://api.openai.com/v1 for OpenAI
+MODEL_NAME=hf.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:latest
+HF_TOKEN=your_token_here                 # HuggingFace token / API key
+
+# Optional
+GRAPHREVIEW_OUTPUT_DIR=outputs
+GRAPHREVIEW_SEMGREP_ENABLED=false
+RL_MAX_STEPS=20
+RL_TASK_TIMEOUT=300
 ```
 
-## Unified One-Command Runner
+## Supported LLM Providers
 
-Run seed + easy/medium/hard reviews + artifact generation on any target codebase:
+GraphReview works with any OpenAI-compatible endpoint:
 
-```bash
-graphreview /absolute/path/to/your/codebase --force-seed
-```
+| Provider | API_BASE_URL | MODEL_NAME example |
+|----------|-------------|-------------------|
+| Ollama (local) | http://localhost:11434/v1 | hf.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF:latest |
+| OpenAI | https://api.openai.com/v1 | gpt-4o-mini |
+| Custom | your endpoint | your model |
 
-By default, this opens an interactive prompt and starts in full fused mode unless you choose a faster option.
+## Action Space
 
-Current behavior:
+| Action | Description | Reward |
+|--------|-------------|--------|
+| FLAG_STYLE | Style/formatting issue | +0.5 if matches linter |
+| FLAG_BUG | Logic error | +0.5 if matches linter |
+| FLAG_SECURITY | Security vulnerability | +0.5 if matches linter |
+| FLAG_DEPENDENCY_ISSUE | Upstream cause, with attribution | +0.6 if edge verified |
+| ADD_COMMENT | Explanatory comment | +0.3 if keyword match |
+| REQUEST_CONTEXT | Fetch neighbor code | -0.1 (investigation cost) |
+| REQUEST_CHANGES | End review — changes needed | +0.2 if issues found |
+| APPROVE | End review — approved | -1.0 if issues missed |
 
-- Running `graphreview ...` with no `--llm-mode` starts an interactive prompt.
-- Default prompt choice is full fused mode.
-- You can choose mode, edge summaries, levels, thinking level, and reasoning effort each run.
-- Use `--no-prompt` for CI/non-interactive runs.
+## Baseline Scores (sample_project)
 
-LLM modes:
+| Task | Score | Notes |
+|------|-------|-------|
+| style_review | ~0.80 | Deterministic — pylint flags |
+| logic_review | ~0.55 | Requires null-ref reasoning |
+| cascade_review | ~0.40 | Requires 3-hop attribution |
 
-```bash
-# Fast deterministic run (default)
-graphreview /absolute/path/to/your/codebase --force-seed --llm-mode fast --no-prompt
+## API Endpoints
 
-# Primary judge only
-graphreview /absolute/path/to/your/codebase --force-seed --llm-mode judge --no-prompt
+````
+POST /reset          Start new episode
+POST /step           Take one action
+GET  /state          Current graph state
+GET  /tasks          List available tasks
+GET  /health         Health check
+POST /reports/generate  Generate HTML/JSON/MD report
+````
 
-# Primary + verifier fusion (slowest)
-graphreview /absolute/path/to/your/codebase --force-seed --llm-mode fused --edge-summary --no-prompt
+## OpenEnv Compliance
 
-# Judge with explicit thinking settings
-graphreview /absolute/path/to/your/codebase --force-seed --llm-mode judge --think-level medium --reasoning-effort medium --no-prompt
-```
-
-Equivalent without installing entrypoints:
-
-```bash
-python run_project.py /absolute/path/to/your/codebase --force-seed
-```
-
-Optional focused run:
-
-```bash
-graphreview /absolute/path/to/your/codebase --modules checkout auth --filter-hops 1 --report-prefix myrun
-```
-
-## Direct Module Review (Phase 4)
-
-Example: run `logic_review` with explicit module focus:
-
-```bash
-curl -s -X POST http://localhost:8000/reset \
-  -H "content-type: application/json" \
-  -d '{"task_id":"logic_review","module_override":["checkout"]}'
-```
-
-Policy behavior:
-
-- For medium/hard tasks, module overrides are automatically expanded to one-hop dependencies and dependents.
-- This preserves dependency context quality for cascade reasoning.
-
-CLI module-filtered execution (generic, real projects supported):
-
-```bash
-python -m graders.review_runner /path/to/project \
-  --grader hard \
-  --force-seed \
-  --modules checkout auth \
-  --filter-hops 1 \
-  --report \
-  --output-dir outputs/real_project \
-  --report-prefix real_project
-```
-
-This mode keeps review scope connected to selected modules by traversing related dependencies.
-
-API report generation (future UI/server integration):
-
-```bash
-curl -s -X POST http://localhost:8000/reports/generate \
-  -H "content-type: application/json" \
-  -d '{"module_override":["checkout"],"hops":1,"output_dir":"outputs/api"}'
-```
-
-Frontend results console (served by uvicorn app):
-
-- `GET /` opens the report browser UI.
-- `GET /ui/results` lists discovered `*_report.json` artifacts under `GRAPHREVIEW_OUTPUT_DIR`.
-- `GET /ui/result?report_path=...` returns report payload + DB schema columns + connectivity diagnostics.
-- `GET /artifacts/...` serves generated HTML/JSON/Markdown assets for direct viewing.
-
-Training and analyzer workflow in UI:
-
-- Open the `Training` tab:
-  - `Run Training Bootstrap` verifies Qwen GGUF manifest + checksum.
-  - `Run Training Episode` executes `inference.py`, persists run metrics to SQLite, and refreshes run history.
-- Open the `Deterministic Analysis` tab:
-  - runs full analyzer stack and persists normalized findings.
-
-Equivalent training API calls:
-
-```bash
-curl -s -X POST http://localhost:8000/training/bootstrap
-curl -s -X POST http://localhost:8000/training/run -H "content-type: application/json" -d '{"force_seed":false}'
-curl -s http://localhost:8000/training/runs?limit=20
-```
-
-Canonical challenge fixture:
-
-- `sample_project_canonical/` contains the exact 10-file challenge fixture.
-- Validate fixture layout and bug signatures with:
-
-```bash
-python -m tasks.validate_canonical_fixture
-```
-
-If graphs look fragmented, regenerate with the latest parser/edge builder and force reseed:
-
-```bash
-python -m db.seed /path/to/project --force --db-path /tmp/graphreview.db
-```
-
-## Accuracy Verification Against Ground Truth
-
-Verified on `sample_project` by running each task with deterministic action generation and comparing stored review actions against persisted linter findings.
-
-Observed run (current implementation):
-
-- `style_review`: precision `1.0`, recall `1.0`
-- `logic_review`: precision `1.0`, recall `1.0`
-- `cascade_review`: precision `1.0`, recall `1.0`
-
-Notes:
-
-- Accuracy endpoint computes precision/recall from persisted annotations and module findings.
-- Hard grader stores judge metadata for auditability in structured annotation payloads.
-
-## Confidence Scoring Policy (Phase 5)
-
-Confidence score is designed to generalize beyond sample fixtures. It is not recall-only.
-
-Computed metrics:
-
-- precision
-- recall
-- f1
-- severity-weighted finding coverage
-- security finding coverage (Bandit findings matched by review flags)
-- dependency attribution validity (graph-backed)
-- consistency (penalizes contradictory terminal actions)
-
-Weighted confidence formula:
-
-- `0.35 * f1`
-- `0.20 * severity_weighted_coverage`
-- `0.15 * security_coverage`
-- `0.20 * dependency_attribution_validity`
-- `0.10 * consistency`
-
-This design rewards useful review behavior on unseen modules where raw recall alone can be misleading.
-
-## Visualization and Reporting Output
-
-Generated artifacts include:
-
-- Interactive graph with color-coded review status and edge-type styling.
-- Markdown report with module summaries, security analysis, and cascade attribution details.
-- JSON report with machine-readable nodes, edges, reviews, and quality metrics.
-
-Security report behavior:
-
-- Security findings are listed per module with severity/code/line/message.
-- Reports call out what is wrong and whether reviews covered each security signal.
-- Cascade attributions are listed with step/action/reward evidence.
-
-## Testing
-
-Targeted regression + phase tests:
-
-```bash
-pytest -q tests/test_phase2_graph_manager.py \
-  tests/test_phase2_token_budget.py \
-  tests/test_phase2_observation.py \
-  tests/test_graders.py \
-  tests/test_phase5_reporting.py \
-  tests/test_phase4_environment.py \
-  tests/test_phase4_server.py
-```
-
-## OpenEnv Metadata
-
-`openenv.yaml` includes phase 4 task metadata, runtime endpoint contract, and model type references for action/observation/state.
-
-## Security and Design Notes
-
-- SQLite/libSQL remains the source of truth for graph, episode, and annotation state.
-- Reset behavior clears only episode-specific annotations, not seeded graph/linter data.
-- Observation token budget is hard-enforced.
-- Graders and task traversal use deterministic ordering and strict typed boundaries.
-- Review annotations are stored with structured JSON payloads for future visualization/report phases.
+- Typed Pydantic models: ReviewAction, CodeObservation, GraphState
+- Full step() / reset() / state() interface
+- openenv.yaml metadata
+- Baseline inference script: inference.py
+- Docker deployment ready

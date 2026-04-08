@@ -11,6 +11,9 @@ from graders.base_grader import EpisodeState
 from graders.medium_grader import MediumGrader
 
 
+SEMGREP_ENABLED = os.getenv("GRAPHREVIEW_SEMGREP_ENABLED", "false").lower() == "true"
+
+
 class HardGrader(MediumGrader):
     """Deterministic semgrep plus dependency graph attribution grading."""
 
@@ -22,7 +25,9 @@ class HardGrader(MediumGrader):
     def truth_analyzers(self) -> set[str] | None:
         raw = os.getenv("GRAPHREVIEW_HARD_TRUTH_ANALYZERS", "semgrep,bandit,pyright,mypy")
         analyzers = {item.strip() for item in raw.split(",") if item.strip()}
-        return analyzers or {"semgrep"}
+        if not SEMGREP_ENABLED:
+            analyzers.discard("semgrep")
+        return analyzers
 
     def grade_action(
         self,
@@ -83,7 +88,7 @@ class HardGrader(MediumGrader):
         findings: list[AnalyzerFinding],
         state: EpisodeState,
     ) -> AnalyzerFinding | None:
-        allowed = self.truth_analyzers() or {"semgrep"}
+        allowed = self.truth_analyzers() or set()
         for finding in findings:
             finding_id = finding.id or -1
             if finding_id in state.matched_finding_ids:

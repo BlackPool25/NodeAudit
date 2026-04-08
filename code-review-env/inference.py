@@ -166,6 +166,7 @@ def _extract_agent_findings(store: Store, config) -> set[str]:
 def main() -> None:
     args = _build_parser().parse_args()
     config = load_runtime_config()
+    model_name = os.getenv("MODEL_NAME", "gemma4:e4b")
 
     target = Path(args.target).resolve()
     print(f"[START] target={target} model={config.llm_model_training} mode=deterministic-ground-truth")
@@ -173,7 +174,7 @@ def main() -> None:
     weight_manager = WeightSafetyManager(Path(config.llm_weight_manifest_dir))
     if args.register_weights:
         manifest = weight_manager.register_existing(
-            model_name="qwen2.5-coder-7b-instruct-q6_k",
+            model_name=model_name,
             weight_path=Path(config.llm_model_agent_path),
         )
         print(
@@ -189,10 +190,10 @@ def main() -> None:
         )
 
     try:
-        verified_weight_path = weight_manager.load_verified("qwen2.5-coder-7b-instruct-q6_k")
+        verified_weight_path = weight_manager.load_verified(model_name)
     except FileNotFoundError:
         manifest = weight_manager.register_existing(
-            model_name="qwen2.5-coder-7b-instruct-q6_k",
+            model_name=model_name,
             weight_path=Path(config.llm_model_agent_path),
         )
         print(
@@ -206,7 +207,7 @@ def main() -> None:
                 sort_keys=True,
             )
         )
-        verified_weight_path = weight_manager.load_verified("qwen2.5-coder-7b-instruct-q6_k")
+        verified_weight_path = weight_manager.load_verified(model_name)
     print(f"[STEP] weights_verified path={verified_weight_path}")
 
     seed_result = seed_project(target_dir=target, db_path=args.db_path, force=args.force_seed)
