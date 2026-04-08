@@ -26,6 +26,56 @@ const runAnalysisOutputEl = document.getElementById('runAnalysisOutput');
 let currentNodes = [];
 let selectedModuleId = '';
 
+function findNodeByModuleId(moduleId) {
+  const target = String(moduleId || '').trim();
+  if (!target) {
+    return null;
+  }
+
+  const exact = currentNodes.find((node) => String(node.module_id) === target);
+  if (exact) {
+    return exact;
+  }
+
+  const lowered = target.toLowerCase();
+  const ci = currentNodes.find((node) => String(node.module_id).toLowerCase() === lowered);
+  if (ci) {
+    return ci;
+  }
+
+  return currentNodes.find((node) => String(node.module_id).endsWith(`.${target}`)) || null;
+}
+
+function selectModuleFromGraph(moduleId) {
+  const node = findNodeByModuleId(moduleId);
+  if (!node) {
+    return;
+  }
+  showModule(node);
+}
+
+function bindGraphNodeClick(frameWin) {
+  if (!frameWin || !frameWin.network || frameWin.__graphReviewNodeClickBound) {
+    return;
+  }
+  frameWin.__graphReviewNodeClickBound = true;
+  frameWin.network.on('click', (params) => {
+    if (!params?.nodes?.length) {
+      return;
+    }
+    const moduleId = params.nodes[0];
+    selectModuleFromGraph(moduleId);
+  });
+}
+
+window.addEventListener('message', (event) => {
+  const payload = event.data;
+  if (!payload || payload.type !== 'graphreview-node-select') {
+    return;
+  }
+  selectModuleFromGraph(payload.moduleId);
+});
+
 function normalizeTooltipText(raw) {
   const text = String(raw || '');
   return text
@@ -48,6 +98,7 @@ function normalizeGraphTooltips(frameDoc) {
 
 function applyGraphTooltipStyles() {
   const frameDoc = graphFrame?.contentDocument;
+  const frameWin = graphFrame?.contentWindow;
   if (!frameDoc) {
     return;
   }
@@ -75,6 +126,18 @@ function applyGraphTooltipStyles() {
   const observer = new MutationObserver(() => normalizeGraphTooltips(frameDoc));
   observer.observe(frameDoc.body, { subtree: true, childList: true, characterData: true });
   normalizeGraphTooltips(frameDoc);
+
+  if (frameWin) {
+    bindGraphNodeClick(frameWin);
+    let retries = 0;
+    const interval = setInterval(() => {
+      retries += 1;
+      bindGraphNodeClick(frameWin);
+      if (frameWin.__graphReviewNodeClickBound || retries > 20) {
+        clearInterval(interval);
+      }
+    }, 250);
+  }
 }
 
 graphFrame?.addEventListener('load', applyGraphTooltipStyles);
