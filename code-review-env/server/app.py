@@ -678,13 +678,21 @@ def bootstrap_training() -> TrainingBootstrapResponse:
 	config = load_runtime_config()
 	weight_manager = WeightSafetyManager(Path(config.llm_weight_manifest_dir))
 	model_name = os.getenv("MODEL_NAME", "gemma4:e4b")
+	weight_path = "unavailable"
+	sha256 = "unavailable"
 	try:
-		weight_path = weight_manager.load_verified(model_name)
-		sha256 = weight_manager.checksum(weight_path)
+		verified_path = weight_manager.load_verified(model_name)
+		weight_path = str(verified_path)
+		sha256 = weight_manager.checksum(verified_path)
 	except FileNotFoundError:
-		manifest = weight_manager.register_existing(model_name=model_name, weight_path=Path(config.llm_model_agent_path))
-		weight_path = Path(manifest.source_path)
-		sha256 = manifest.sha256
+		try:
+			manifest = weight_manager.register_existing(model_name=model_name, weight_path=Path(config.llm_model_agent_path))
+			weight_path = manifest.source_path
+			sha256 = manifest.sha256
+		except FileNotFoundError:
+			# In containerized deployments (e.g., HF Space), local GGUF files may not exist.
+			# Bootstrap should still return deterministic coverage metrics instead of a 500 error.
+			pass
 
 	manager = TrainingRunManager()
 	deterministic = STORE.get_analyzer_findings()
@@ -695,7 +703,7 @@ def bootstrap_training() -> TrainingBootstrapResponse:
 	comparison = manager.compare(deterministic_findings=deterministic_keys, agent_findings=set())
 
 	return TrainingBootstrapResponse(
-		weight_path=str(weight_path),
+		weight_path=weight_path,
 		weight_sha256=sha256,
 		deterministic_findings=len(deterministic),
 		precision=comparison.precision,
