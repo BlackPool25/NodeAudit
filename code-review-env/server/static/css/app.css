@@ -82,6 +82,22 @@ header h1 { margin: 0; font-size: 1.2rem; }
   background: white;
   cursor: pointer;
   transition: all 0.15s ease;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+}
+
+.result-item strong {
+  display: block;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.result-item .muted {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.25;
 }
 
 .result-item:hover { border-color: var(--accent); transform: translateY(-1px); }

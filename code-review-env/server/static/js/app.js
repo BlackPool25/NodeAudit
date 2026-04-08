@@ -26,6 +26,26 @@ const runAnalysisOutputEl = document.getElementById('runAnalysisOutput');
 let currentNodes = [];
 let selectedModuleId = '';
 
+function normalizeTooltipText(raw) {
+  const text = String(raw || '');
+  return text
+    .replace(/<br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/?b>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+
+function normalizeGraphTooltips(frameDoc) {
+  const tooltips = frameDoc.querySelectorAll('.vis-tooltip, .vis-network-tooltip');
+  tooltips.forEach((tooltip) => {
+    const normalized = normalizeTooltipText(tooltip.textContent);
+    if (normalized && normalized !== tooltip.textContent) {
+      tooltip.textContent = normalized;
+    }
+  });
+}
+
 function applyGraphTooltipStyles() {
   const frameDoc = graphFrame?.contentDocument;
   if (!frameDoc) {
@@ -46,10 +66,15 @@ function applyGraphTooltipStyles() {
       overflow-wrap: anywhere !important;
       word-break: break-word !important;
       line-height: 1.35 !important;
+      text-align: left !important;
     }
   `;
 
   frameDoc.head?.appendChild(style);
+
+  const observer = new MutationObserver(() => normalizeGraphTooltips(frameDoc));
+  observer.observe(frameDoc.body, { subtree: true, childList: true, characterData: true });
+  normalizeGraphTooltips(frameDoc);
 }
 
 graphFrame?.addEventListener('load', applyGraphTooltipStyles);
@@ -110,14 +135,24 @@ function renderSchema(columns) {
   });
 }
 
-function renderDiagnostics(connectivity, metrics) {
-  const isolationClass = connectivity.isolation_ratio > 0.35 ? 'danger' : '';
+function renderDiagnostics(connectivity, metrics, report) {
+  const reportNodeCount = Array.isArray(report?.nodes) ? report.nodes.length : 0;
+  const reportEdgeCount = Array.isArray(report?.edges) ? report.edges.length : 0;
+
+  const nodeCount = Number(connectivity?.node_count || 0) || reportNodeCount;
+  const edgeCount = Number(connectivity?.edge_count || 0) || reportEdgeCount;
+  const connectedComponents = Number(connectivity?.connected_components || 0);
+  const largestComponentSize = Number(connectivity?.largest_component_size || 0);
+  const isolatedNodes = Number(connectivity?.isolated_nodes || 0);
+  const isolationRatio = Number(connectivity?.isolation_ratio || 0);
+
+  const isolationClass = isolationRatio > 0.35 ? 'danger' : '';
   diagEl.innerHTML = `
-    <div class="kv"><span>Nodes</span><strong>${connectivity.node_count}</strong></div>
-    <div class="kv"><span>Edges</span><strong>${connectivity.edge_count}</strong></div>
-    <div class="kv"><span>Connected Components</span><strong>${connectivity.connected_components}</strong></div>
-    <div class="kv"><span>Largest Component</span><strong>${connectivity.largest_component_size}</strong></div>
-    <div class="kv"><span>Isolated Nodes</span><strong class="${isolationClass}">${connectivity.isolated_nodes} (${fmtPct(connectivity.isolation_ratio)})</strong></div>
+    <div class="kv"><span>Nodes</span><strong>${nodeCount}</strong></div>
+    <div class="kv"><span>Edges</span><strong>${edgeCount}</strong></div>
+    <div class="kv"><span>Connected Components</span><strong>${connectedComponents}</strong></div>
+    <div class="kv"><span>Largest Component</span><strong>${largestComponentSize}</strong></div>
+    <div class="kv"><span>Isolated Nodes</span><strong class="${isolationClass}">${isolatedNodes} (${fmtPct(isolationRatio)})</strong></div>
     <div class="kv"><span>Precision / Recall / F1</span><strong>${Number(metrics.precision || 0).toFixed(3)} / ${Number(metrics.recall || 0).toFixed(3)} / ${Number(metrics.f1 || 0).toFixed(3)}</strong></div>
     <div class="kv"><span>Security Coverage</span><strong>${Number(metrics.security_coverage || 0).toFixed(3)}</strong></div>
     <div class="kv"><span>Stage Coverage</span><strong>${Number(metrics.stage_coverage || 0).toFixed(3)}</strong></div>
@@ -223,7 +258,7 @@ async function selectResult(result, itemEl) {
   }
 
   const detail = await res.json();
-  renderDiagnostics(detail.connectivity, detail.report.metrics || {});
+  renderDiagnostics(detail.connectivity, detail.report.metrics || {}, detail.report || {});
   renderSchema(detail.db_columns || {});
   renderNodes(detail.report || {});
   moduleDetailEl.classList.add('muted');
