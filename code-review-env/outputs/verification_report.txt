@@ -17,13 +17,13 @@ WARNING: HF_TOKEN missing; skipping live judge API scoring check
 PASS: Composite reward formula check passed
 
 === SECTION 4: Training Data Quality ===
-FAIL: Training records too low: 30
+PASS: Training record count OK: 60
 PASS: Reasoning ratio check passed: 100%
 PASS: DPO pairs spot-check passed (0)
 PASS: No direct eval-module leakage in module_id field
 
 === SECTION 5: RL Environment Integrity ===
-WARNING: openenv CLI not available; skipping openenv validate
+PASS: openenv validate passed
 PASS: Environment reward-range check passed
 
 === SECTION 6: HF Deployment Readiness ===
