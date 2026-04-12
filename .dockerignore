@@ -5,11 +5,8 @@
 .env.*
 
 # Large local artifacts and model weights (not needed by runtime image build).
-outputs/
 training_corpus/
 
-code-review-env/Models/
-code-review-env/outputs/
 code-review-env/training/
 code-review-env/unsloth_compiled_cache/
 code-review-env/.venv/
