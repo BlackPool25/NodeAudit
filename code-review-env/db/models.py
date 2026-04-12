@@ -11,6 +11,7 @@ from db.schema import (
     SeedMeta,
     Severity,
     TaskDefinition,
+    TrainingAnnotation,
     TrainingRun,
 )
 
@@ -27,5 +28,6 @@ __all__ = [
     "SeedMeta",
     "Severity",
     "TaskDefinition",
+    "TrainingAnnotation",
     "TrainingRun",
 ]

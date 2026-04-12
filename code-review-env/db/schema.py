@@ -161,3 +161,20 @@ class TrainingRun(SQLModel, table=True):
     output_path: str = ""
     run_config_json: str = "{}"
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class TrainingAnnotation(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    source_root: str = Field(index=True)
+    run_id: str = Field(index=True)
+    module_id: str = Field(index=True)
+    task_id: str = Field(index=True)
+    judge_verdict: str = ""
+    avg_reward: float = 0.0
+    correct_attributions_json: str = "[]"
+    wrong_attributions_json: str = "[]"
+    action_counts_json: str = "{}"
+    action_type: str = ""
+    action_payload: str = "{}"
+    thinking_quality: float = 0.0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

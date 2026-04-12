@@ -102,7 +102,8 @@ class BaseGrader(ABC):
             "metadata": reward.metadata,
         }
         note = json.dumps(payload, sort_keys=True)
-        summary = f"{action.action_type.value}: {reward.feedback}"
+        # Keep neighbor summaries free of grader hints to avoid reward-signal leakage.
+        summary = f"{action.action_type.value}: action recorded"
         self.store.update_annotation(
             module_id=module_id,
             episode_id=episode_id,

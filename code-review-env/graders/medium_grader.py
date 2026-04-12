@@ -15,7 +15,7 @@ class MediumGrader(EasyGrader):
 	KEYWORD_MIN_JACCARD = 0.3
 
 	def truth_analyzers(self) -> set[str] | None:
-		return {"mypy", "pyright"}
+		return {"pyright", "pysa", "ast"}
 
 	def grade_action(
 		self,

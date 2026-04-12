@@ -12,7 +12,7 @@ class EasyGrader(BaseGrader):
 	LINE_TOLERANCE = 3
 
 	def truth_analyzers(self) -> set[str] | None:
-		return {"pylint", "pyflakes", "bandit", "vulture"}
+		return {"pyright", "pysa", "bandit", "pylint", "radon", "ast"}
 
 	def grade_action(
 		self,
@@ -79,11 +79,11 @@ class EasyGrader(BaseGrader):
 	@staticmethod
 	def _category_matches(action_type: ActionType, finding: AnalyzerFinding) -> bool:
 		if action_type == ActionType.FLAG_SECURITY:
-			return finding.analyzer == "bandit"
+			return finding.analyzer in {"bandit", "pysa"}
 		if action_type == ActionType.FLAG_STYLE:
-			return finding.analyzer in {"pylint", "vulture"} and finding.severity.value == "low"
+			return finding.analyzer in {"radon"} and finding.severity.value in {"low", "medium"}
 		if action_type == ActionType.FLAG_BUG:
-			return finding.analyzer in {"pyflakes", "pylint", "vulture"} and finding.severity.value in {
+			return finding.analyzer in {"pyright", "pylint", "ast", "pysa", "radon"} and finding.severity.value in {
 				"high",
 				"medium",
 			}

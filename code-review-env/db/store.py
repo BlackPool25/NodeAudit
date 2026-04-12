@@ -25,6 +25,7 @@ from db.schema import (
     ReviewStatus,
     SeedMeta,
     Severity,
+    TrainingAnnotation,
     TrainingRun,
 )
 
@@ -349,6 +350,48 @@ class Store:
             )
             return list(session.exec(query).all())
 
+    def create_training_annotation(
+        self,
+        *,
+        run_id: str,
+        module_id: str,
+        task_id: str,
+        judge_verdict: str,
+        avg_reward: float,
+        action_type: str,
+        action_payload: str,
+        thinking_quality: float,
+        correct_attribution: str,
+        wrong_attribution: str,
+    ) -> TrainingAnnotation:
+        with Session(self.engine) as session:
+            record = TrainingAnnotation(
+                source_root=self.config.source_root,
+                run_id=run_id,
+                module_id=module_id,
+                task_id=task_id,
+                judge_verdict=judge_verdict,
+                avg_reward=avg_reward,
+                action_type=action_type,
+                action_payload=action_payload,
+                thinking_quality=thinking_quality,
+                correct_attributions_json=json.dumps([correct_attribution] if correct_attribution else []),
+                wrong_attributions_json=json.dumps([wrong_attribution] if wrong_attribution else []),
+                action_counts_json=json.dumps({action_type: 1}),
+            )
+            session.add(record)
+            session.commit()
+            session.refresh(record)
+            return record
+
+    def get_training_annotations(self, run_id: str) -> list[TrainingAnnotation]:
+        with Session(self.engine) as session:
+            query = select(TrainingAnnotation).where(
+                TrainingAnnotation.source_root == self.config.source_root,
+                TrainingAnnotation.run_id == run_id,
+            )
+            return list(session.exec(query).all())
+
     def get_training_run(self, run_id: str) -> TrainingRun | None:
         with Session(self.engine) as session:
             query = select(TrainingRun).where(
@@ -665,6 +708,11 @@ class Store:
             session.exec(
                 delete(TrainingRun).where(
                     TrainingRun.source_root == self.config.source_root
+                )
+            )
+            session.exec(
+                delete(TrainingAnnotation).where(
+                    TrainingAnnotation.source_root == self.config.source_root
                 )
             )
             session.commit()

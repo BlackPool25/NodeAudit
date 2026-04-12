@@ -123,7 +123,7 @@
       <div class="simple-grid">
         <article class="panel section">
           <h3>Deterministic Analyzer Pipeline</h3>
-          <p class="muted">Runs pylint, pyflakes, bandit, mypy, pyright, semgrep, and vulture, then stores normalized findings in SQLite.</p>
+          <p class="muted">Runs pyright strict, pysa taint analysis, bandit, pylint errors-only, radon complexity, and AST logical bug checks, then stores normalized findings in SQLite.</p>
           <label for="analysisTimeout">Timeout (seconds)</label>
           <input id="analysisTimeout" type="number" min="10" max="300" value="45" />
           <button id="runAnalysisBtn" type="button">Run Deterministic Analysis</button>

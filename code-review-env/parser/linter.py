@@ -47,6 +47,7 @@ def run_pylint(path: Path) -> list[LinterIssue]:
         "--output-format=json2",
         "--score=n",
         "--reports=n",
+        "--errors-only",
     ]
     try:
         proc = subprocess.run(
@@ -122,8 +123,9 @@ def run_bandit(path: Path) -> list[LinterIssue]:
     return issues
 
 
-def run_pyflakes(path: Path) -> list[LinterIssue]:
-    cmd = [sys.executable, "-m", "pyflakes", str(path)]
+def run_pyright(path: Path) -> list[LinterIssue]:
+    pyright_bin = str((Path(sys.executable).resolve().parent / "pyright"))
+    cmd = [pyright_bin if Path(pyright_bin).exists() else "pyright", "--strict", "--outputjson", str(path)]
     try:
         proc = subprocess.run(
             cmd,
@@ -132,28 +134,34 @@ def run_pyflakes(path: Path) -> list[LinterIssue]:
             check=False,
             timeout=_timeout_seconds(),
         )
+    except FileNotFoundError:
+        # Optional dependency in lightweight/docker environments.
+        return []
     except subprocess.TimeoutExpired:
         return []
     payload = (proc.stdout or "").strip()
     if not payload:
         return []
 
+    try:
+        parsed = json.loads(payload)
+    except json.JSONDecodeError:
+        return []
+
     issues: list[LinterIssue] = []
-    for raw_line in payload.splitlines():
-        line = 0
-        message = raw_line.strip()
-        if ":" in raw_line:
-            parts = raw_line.split(":", 3)
-            if len(parts) >= 3 and parts[1].isdigit():
-                line = int(parts[1])
-                message = parts[3].strip() if len(parts) == 4 else message
+    for item in parsed.get("generalDiagnostics", []):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("severity") or "").lower() != "error":
+            continue
+        line = int(((item.get("range") or {}).get("start") or {}).get("line") or 0) + 1
         issues.append(
             LinterIssue(
-                tool="pyflakes",
+                tool="pyright",
                 line=line,
-                severity="medium",
-                code="PYF000",
-                message=message,
+                severity="high",
+                code=str(item.get("rule") or "PYRIGHT"),
+                message=str(item.get("message") or ""),
             )
         )
     return issues
@@ -163,7 +171,7 @@ def run_linters(path: Path) -> list[LinterIssue]:
     with ThreadPoolExecutor(max_workers=3) as pool:
         py_future = pool.submit(run_pylint, path)
         ba_future = pool.submit(run_bandit, path)
-        fl_future = pool.submit(run_pyflakes, path)
+        fl_future = pool.submit(run_pyright, path)
 
         issues = py_future.result()
         issues.extend(ba_future.result())

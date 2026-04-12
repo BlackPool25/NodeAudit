@@ -3,11 +3,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+from analyzers.ast_checker import ASTFinding, run_all_checks
 
 
 @dataclass(frozen=True)
@@ -35,44 +36,47 @@ class AnalyzerRunSummary:
 class AnalyzerPipeline:
     """Run deterministic analyzers and normalize outputs into shared finding records."""
 
-    def __init__(self, target_dir: Path, timeout_seconds: int = 45) -> None:
+    def __init__(self, target_dir: Path, timeout_seconds: int = 60) -> None:
         self.target_dir = target_dir.resolve()
         self.timeout_seconds = timeout_seconds
 
     def run_all(self) -> tuple[list[AnalyzerFindingRecord], list[AnalyzerRunSummary]]:
         findings: list[AnalyzerFindingRecord] = []
         summaries: list[AnalyzerRunSummary] = []
-        semgrep_enabled = os.getenv("GRAPHREVIEW_SEMGREP_ENABLED", "true").strip().lower() == "true"
         runners = [
-            self._run_pylint,
-            self._run_pyflakes,
-            self._run_bandit,
-            self._run_mypy,
             self._run_pyright,
-            self._run_vulture,
+            self._run_pysa,
+            self._run_bandit,
+            self._run_pylint,
+            self._run_radon,
+            self._run_ast_checks,
         ]
-        if semgrep_enabled:
-            runners.append(self._run_semgrep)
         for runner in runners:
             records, summary = runner()
             findings.extend(records)
             summaries.append(summary)
         return findings, summaries
 
-    def _run_mypy(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
-        cmd = [
-            sys.executable,
-            "-m",
-            "mypy",
-            str(self.target_dir),
-            "--output",
-            "json",
-            "--show-error-codes",
-            "--hide-error-context",
-            "--no-color-output",
-            "--no-error-summary",
-        ]
-        return self._run_with_parser("mypy", cmd, self._parse_mypy)
+    def _run_pyright(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
+        cmd = [self._resolve_pyright_bin(), "--strict", "--outputjson", str(self.target_dir)]
+        return self._run_with_parser("pyright", cmd, self._parse_pyright)
+
+    def _resolve_pyright_bin(self) -> str:
+        env_bin = Path(sys.executable).resolve().parent / "pyright"
+        if env_bin.exists():
+            return str(env_bin)
+        explicit = os.getenv("GRAPHREVIEW_PYRIGHT_BIN", "").strip()
+        if explicit:
+            return explicit
+        return "pyright"
+
+    def _run_pysa(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
+        cmd = ["pyre", "--noninteractive", "analyze", "--output", "json"]
+        return self._run_with_parser("pysa", cmd, self._parse_pysa)
+
+    def _run_bandit(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
+        cmd = [sys.executable, "-m", "bandit", "-r", "-q", "-f", "json", str(self.target_dir)]
+        return self._run_with_parser("bandit", cmd, self._parse_bandit)
 
     def _run_pylint(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
         cmd = [
@@ -83,49 +87,37 @@ class AnalyzerPipeline:
             "--output-format=json2",
             "--score=n",
             "--reports=n",
+            "--errors-only",
         ]
         return self._run_with_parser("pylint", cmd, self._parse_pylint)
 
-    def _run_pyflakes(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
-        cmd = [sys.executable, "-m", "pyflakes", str(self.target_dir)]
-        return self._run_with_parser("pyflakes", cmd, self._parse_pyflakes)
+    def _run_radon(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
+        cmd = [sys.executable, "-m", "radon", "cc", "-j", "-s", str(self.target_dir)]
+        return self._run_with_parser("radon", cmd, self._parse_radon)
 
-    def _run_bandit(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
-        cmd = [sys.executable, "-m", "bandit", "-r", "-q", "-f", "json", str(self.target_dir)]
-        return self._run_with_parser("bandit", cmd, self._parse_bandit)
+    def _run_ast_checks(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
+        cmd = ["python-ast-checker", str(self.target_dir)]
+        py_files = sorted(path for path in self.target_dir.rglob("*.py") if path.is_file())
+        records: list[AnalyzerFindingRecord] = []
 
-    def _run_pyright(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
-        cmd = ["pyright", "--outputjson", str(self.target_dir)]
-        return self._run_with_parser("pyright", cmd, self._parse_pyright)
+        for py_file in py_files:
+            if any(part.startswith(".") for part in py_file.parts):
+                continue
+            for finding in run_all_checks(py_file):
+                records.append(self._ast_to_record(finding))
 
-    def _run_semgrep(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
-        rules_dir = self.target_dir / "semgrep_rules"
-        if not rules_dir.exists():
-            rules_dir = Path(__file__).resolve().parents[1] / "semgrep_rules"
-
-        semgrep_bin = os.getenv("GRAPHREVIEW_SEMGREP_BIN")
-        if not semgrep_bin:
-            pysemgrep_candidate = str((Path.home() / ".local" / "bin" / "pysemgrep").resolve())
-            if Path(pysemgrep_candidate).exists():
-                semgrep_bin = pysemgrep_candidate
-            else:
-                semgrep_bin = shutil.which("semgrep")
-        if not semgrep_bin:
-            semgrep_candidate = str((Path.home() / ".local" / "bin" / "semgrep").resolve())
-            semgrep_bin = semgrep_candidate if Path(semgrep_candidate).exists() else "semgrep"
-
-        cmd = [
-            semgrep_bin,
-            "--json",
-            "--config",
-            str(rules_dir),
-            str(self.target_dir),
-        ]
-        return self._run_with_parser("semgrep", cmd, self._parse_semgrep)
-
-    def _run_vulture(self) -> tuple[list[AnalyzerFindingRecord], AnalyzerRunSummary]:
-        cmd = [sys.executable, "-m", "vulture", str(self.target_dir), "--sort-by-size", "--json"]
-        return self._run_with_parser("vulture", cmd, self._parse_vulture)
+        return (
+            records,
+            AnalyzerRunSummary(
+                analyzer="ast",
+                findings=len(records),
+                status="ok",
+                command=" ".join(cmd),
+                command_hash=self._command_hash(cmd),
+                analyzer_version="builtin",
+                error_message=None,
+            ),
+        )
 
     def _run_with_parser(
         self,
@@ -168,30 +160,27 @@ class AnalyzerPipeline:
         analyzer_version = self._resolve_version(cmd)
         command = " ".join(cmd)
         command_hash = self._command_hash(cmd)
+
+        if not stdout and analyzer in {"pysa"} and stderr:
+            stdout = stderr
+
         if not stdout:
-            # pyflakes emits diagnostics on stderr.
-            if analyzer == "pyflakes" and stderr:
-                stdout = stderr
-            else:
-                return [], AnalyzerRunSummary(
-                    analyzer=analyzer,
-                    findings=0,
-                    status="ok" if proc.returncode == 0 else "no-output",
-                    command=command,
-                    command_hash=command_hash,
-                    analyzer_version=analyzer_version,
-                    error_message=stderr or None,
-                )
+            return [], AnalyzerRunSummary(
+                analyzer=analyzer,
+                findings=0,
+                status="ok" if proc.returncode in {0, 1, 2} else "no-output",
+                command=command,
+                command_hash=command_hash,
+                analyzer_version=analyzer_version,
+                error_message=stderr or None,
+            )
 
         try:
             records = parser(stdout)
-            status = "ok"
-            if proc.returncode not in {0, 1} and analyzer not in {"pylint", "pyflakes", "bandit", "vulture", "mypy", "pyright", "semgrep"}:
-                status = "no-output"
             return records, AnalyzerRunSummary(
                 analyzer=analyzer,
                 findings=len(records),
-                status=status,
+                status="ok" if proc.returncode in {0, 1, 2} else "no-output",
                 command=command,
                 command_hash=command_hash,
                 analyzer_version=analyzer_version,
@@ -213,21 +202,26 @@ class AnalyzerPipeline:
             return ""
         exe = cmd[0]
         if exe == sys.executable and len(cmd) >= 3 and cmd[1] == "-m":
-            module = cmd[2]
-            version_cmd = [sys.executable, "-m", module, "--version"]
+            version_cmd = [sys.executable, "-m", cmd[2], "--version"]
+        elif exe == "pyre":
+            version_cmd = ["pyre", "--version"]
+        elif exe == "pyright":
+            version_cmd = ["pyright", "--version"]
         else:
             version_cmd = [exe, "--version"]
+
         try:
             proc = subprocess.run(
                 version_cmd,
                 cwd=str(self.target_dir),
                 capture_output=True,
                 text=True,
-                timeout=8,
+                timeout=10,
                 check=False,
             )
         except Exception:
             return ""
+
         value = (proc.stdout or proc.stderr or "").strip().splitlines()
         return value[0][:160] if value else ""
 
@@ -248,81 +242,65 @@ class AnalyzerPipeline:
             module = module[:-3]
         return module
 
-    def _parse_mypy(self, text: str) -> list[AnalyzerFindingRecord]:
+    def _ast_to_record(self, finding: ASTFinding) -> AnalyzerFindingRecord:
+        return AnalyzerFindingRecord(
+            analyzer="ast",
+            module_id=self._normalize_module(finding.file),
+            line=max(int(finding.line), 1),
+            severity=finding.severity,
+            rule_id=finding.rule,
+            message=finding.message,
+            evidence="",
+        )
+
+    def _parse_pyright(self, text: str) -> list[AnalyzerFindingRecord]:
         parsed = json.loads(text)
+        diagnostics = parsed.get("generalDiagnostics", []) if isinstance(parsed, dict) else []
         records: list[AnalyzerFindingRecord] = []
-        if not isinstance(parsed, list):
-            return records
-        for item in parsed:
+        for item in diagnostics:
             if not isinstance(item, dict):
+                continue
+            if str(item.get("severity", "")).lower() != "error":
                 continue
             file_path = str(item.get("file") or "")
-            line = int(item.get("line") or 1)
             message = str(item.get("message") or "")
-            code = str(item.get("code") or "mypy")
-            severity = "high" if str(item.get("severity") or "error").lower() == "error" else "medium"
+            rule = str(item.get("rule") or "pyright-error")
+            line = int(((item.get("range") or {}).get("start") or {}).get("line") or 0) + 1
             records.append(
                 AnalyzerFindingRecord(
-                    analyzer="mypy",
+                    analyzer="pyright",
                     module_id=self._normalize_module(file_path),
                     line=max(line, 1),
-                    severity=severity,
+                    severity="high",
+                    rule_id=rule,
+                    message=message,
+                    evidence="",
+                )
+            )
+        return records
+    def _parse_pysa(self, text: str) -> list[AnalyzerFindingRecord]:
+        parsed = json.loads(text)
+        issues: list[dict[str, object]] = []
+        if isinstance(parsed, dict):
+            issues = list(parsed.get("issues", []))
+        elif isinstance(parsed, list):
+            issues = [item for item in parsed if isinstance(item, dict)]
+
+        records: list[AnalyzerFindingRecord] = []
+        for issue in issues:
+            path = str(issue.get("path") or issue.get("filename") or "")
+            line = int(issue.get("line") or issue.get("line_number") or 1)
+            code = str(issue.get("code") or issue.get("name") or "pysa")
+            message = str(issue.get("description") or issue.get("message") or "Taint flow issue")
+            records.append(
+                AnalyzerFindingRecord(
+                    analyzer="pysa",
+                    module_id=self._normalize_module(path),
+                    line=max(line, 1),
+                    severity="high",
                     rule_id=code,
                     message=message,
-                    evidence="",
-                )
-            )
-        return records
-
-    def _parse_pylint(self, text: str) -> list[AnalyzerFindingRecord]:
-        parsed = json.loads(text)
-        messages = parsed.get("messages", []) if isinstance(parsed, dict) else []
-        records: list[AnalyzerFindingRecord] = []
-        for item in messages:
-            if not isinstance(item, dict):
-                continue
-            module_id = self._normalize_module(str(item.get("path") or item.get("abspath") or ""))
-            line = int(item.get("line") or 1)
-            raw_type = str(item.get("type") or "warning").lower()
-            severity = "low"
-            if raw_type in {"fatal", "error"}:
-                severity = "high"
-            elif raw_type == "warning":
-                severity = "medium"
-            records.append(
-                AnalyzerFindingRecord(
-                    analyzer="pylint",
-                    module_id=module_id,
-                    line=max(line, 1),
-                    severity=severity,
-                    rule_id=str(item.get("messageId") or "pylint"),
-                    message=str(item.get("message") or ""),
-                    evidence=str(item.get("symbol") or ""),
-                )
-            )
-        return records
-
-    def _parse_pyflakes(self, text: str) -> list[AnalyzerFindingRecord]:
-        records: list[AnalyzerFindingRecord] = []
-        for raw_line in text.splitlines():
-            stripped = raw_line.strip()
-            if not stripped:
-                continue
-            parts = stripped.split(":", 3)
-            if len(parts) < 3:
-                continue
-            module_id = self._normalize_module(parts[0].strip())
-            line = int(parts[1]) if parts[1].isdigit() else 1
-            message = parts[3].strip() if len(parts) == 4 else stripped
-            records.append(
-                AnalyzerFindingRecord(
-                    analyzer="pyflakes",
-                    module_id=module_id,
-                    line=max(line, 1),
-                    severity="medium",
-                    rule_id="PYF000",
-                    message=message,
-                    evidence="",
+                    evidence=str(issue.get("define") or issue.get("callable") or ""),
                 )
             )
         return records
@@ -353,82 +331,61 @@ class AnalyzerPipeline:
             )
         return records
 
-    def _parse_pyright(self, text: str) -> list[AnalyzerFindingRecord]:
+    def _parse_pylint(self, text: str) -> list[AnalyzerFindingRecord]:
         parsed = json.loads(text)
-        diagnostics = parsed.get("generalDiagnostics", []) if isinstance(parsed, dict) else []
+        messages = parsed.get("messages", []) if isinstance(parsed, dict) else []
         records: list[AnalyzerFindingRecord] = []
-        for item in diagnostics:
+        for item in messages:
             if not isinstance(item, dict):
                 continue
-            file_path = str(item.get("file") or "")
-            severity_raw = str(item.get("severity") or "warning").lower()
-            severity = "high" if severity_raw == "error" else "medium"
-            message = str(item.get("message") or "")
-            rule = str(item.get("rule") or "pyright")
-            line = int(((item.get("range") or {}).get("start") or {}).get("line") or 0) + 1
+            msg_type = str(item.get("type") or "").lower()
+            if msg_type not in {"fatal", "error"}:
+                continue
             records.append(
                 AnalyzerFindingRecord(
-                    analyzer="pyright",
-                    module_id=self._normalize_module(file_path),
-                    line=max(line, 1),
-                    severity=severity,
-                    rule_id=rule,
-                    message=message,
-                    evidence="",
+                    analyzer="pylint",
+                    module_id=self._normalize_module(str(item.get("path") or item.get("abspath") or "")),
+                    line=max(int(item.get("line") or 1), 1),
+                    severity="high",
+                    rule_id=str(item.get("messageId") or "pylint-error"),
+                    message=str(item.get("message") or ""),
+                    evidence=str(item.get("symbol") or ""),
                 )
             )
         return records
 
-    def _parse_semgrep(self, text: str) -> list[AnalyzerFindingRecord]:
+    def _parse_radon(self, text: str) -> list[AnalyzerFindingRecord]:
         parsed = json.loads(text)
-        results = parsed.get("results", []) if isinstance(parsed, dict) else []
         records: list[AnalyzerFindingRecord] = []
-        for item in results:
-            if not isinstance(item, dict):
+        if not isinstance(parsed, dict):
+            return records
+
+        for file_path, blocks in parsed.items():
+            if not isinstance(blocks, list):
                 continue
-            path = str(item.get("path") or "")
-            extra = item.get("extra") or {}
-            severity_raw = str(extra.get("severity") or "WARNING").lower()
-            severity = "high" if severity_raw == "error" else "medium"
-            start_line = int(((item.get("start") or {}).get("line") or 1))
-            message = str(extra.get("message") or "")
-            rule_id = str(item.get("check_id") or "semgrep")
-            evidence = str(extra.get("lines") or "")
-            records.append(
-                AnalyzerFindingRecord(
-                    analyzer="semgrep",
-                    module_id=self._normalize_module(path),
-                    line=max(start_line, 1),
-                    severity=severity,
-                    rule_id=rule_id,
-                    message=message,
-                    evidence=evidence,
+            for block in blocks:
+                if not isinstance(block, dict):
+                    continue
+                complexity = int(block.get("complexity") or 0)
+                if complexity <= 10:
+                    continue
+                name = str(block.get("name") or block.get("type") or "block")
+                line = int(block.get("lineno") or 1)
+                records.append(
+                    AnalyzerFindingRecord(
+                        analyzer="radon",
+                        module_id=self._normalize_module(file_path),
+                        line=max(line, 1),
+                        severity="medium" if complexity < 15 else "high",
+                        rule_id="CC_HIGH",
+                        message=f"Cyclomatic complexity {complexity} in {name} exceeds threshold 10",
+                        evidence=f"complexity={complexity}",
+                    )
                 )
-            )
         return records
 
-    def _parse_vulture(self, text: str) -> list[AnalyzerFindingRecord]:
-        parsed = json.loads(text)
-        issues = parsed if isinstance(parsed, list) else []
-        records: list[AnalyzerFindingRecord] = []
-        for item in issues:
-            if not isinstance(item, dict):
-                continue
-            module_id = self._normalize_module(str(item.get("filename") or ""))
-            line = int(item.get("lineno") or 1)
-            confidence = int(item.get("confidence") or 60)
-            severity = "medium" if confidence >= 70 else "low"
-            rule_id = str(item.get("type") or "vulture")
-            message = str(item.get("message") or item.get("name") or "Unused code candidate")
-            records.append(
-                AnalyzerFindingRecord(
-                    analyzer="vulture",
-                    module_id=module_id,
-                    line=max(line, 1),
-                    severity=severity,
-                    rule_id=rule_id,
-                    message=message,
-                    evidence="",
-                )
-            )
-        return records
+
+def run_pipeline(target_dir: str | Path) -> list[AnalyzerFindingRecord]:
+    pipeline = AnalyzerPipeline(target_dir=Path(target_dir))
+    findings, _ = pipeline.run_all()
+    return findings

@@ -56,6 +56,11 @@ def init_db(db_path: str | Path | None = None, echo: bool = False) -> None:
 
 def _apply_lightweight_migrations(engine) -> None:
     inspector = inspect(engine)
+    if "trainingannotation" not in inspector.get_table_names():
+        from db.schema import TrainingAnnotation  # local import to avoid circular startup order
+        TrainingAnnotation.__table__.create(bind=engine, checkfirst=True)
+
+    inspector = inspect(engine)
     if "reviewannotation" not in inspector.get_table_names():
         return
 

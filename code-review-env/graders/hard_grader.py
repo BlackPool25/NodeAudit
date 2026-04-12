@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from db.schema import AnalyzerFinding
 from db.store import Store
 from env.action import ActionType, ReviewAction
@@ -10,12 +8,8 @@ from graph.graph_manager import GraphManager
 from graders.base_grader import EpisodeState
 from graders.medium_grader import MediumGrader
 
-
-SEMGREP_ENABLED = os.getenv("GRAPHREVIEW_SEMGREP_ENABLED", "false").lower() == "true"
-
-
 class HardGrader(MediumGrader):
-    """Deterministic semgrep plus dependency graph attribution grading."""
+    """Deterministic dependency-attribution grading on high-signal analyzer findings."""
 
     def __init__(self, store: Store, graph_manager: GraphManager) -> None:
         super().__init__(store)
@@ -23,11 +17,7 @@ class HardGrader(MediumGrader):
         self.graph = self.graph_manager.load_graph()
 
     def truth_analyzers(self) -> set[str] | None:
-        raw = os.getenv("GRAPHREVIEW_HARD_TRUTH_ANALYZERS", "semgrep,bandit,pyright,mypy")
-        analyzers = {item.strip() for item in raw.split(",") if item.strip()}
-        if not SEMGREP_ENABLED:
-            analyzers.discard("semgrep")
-        return analyzers
+        return {"pyright", "pysa", "bandit", "pylint", "radon", "ast"}
 
     def grade_action(
         self,

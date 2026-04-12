@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from sqlmodel import Session, select
@@ -28,6 +29,7 @@ class ObservationBuilder:
 	def __init__(self, source_root: str | Path, db_path: str | Path | None = None) -> None:
 		self.graph_manager = GraphManager(source_root=source_root, db_path=db_path)
 		self.token_budget = TokenBudget()
+		self._expose_neighbor_reviews = os.getenv("GRAPHREVIEW_EXPOSE_NEIGHBOR_REVIEWS", "false").lower() == "true"
 
 	def _fetch_node(self, module_id: str) -> ModuleNode:
 		with Session(self.graph_manager.store.engine) as session:
@@ -97,10 +99,10 @@ class ObservationBuilder:
 					module_id=dep_id,
 					relation="dependency",
 					summary=dep_node.summary or dep_node.ast_summary,
-					review_snippet=dep_node.review_summary,
+					review_snippet=dep_node.review_summary if self._expose_neighbor_reviews else None,
 				)
 			)
-			if dep_node.review_summary:
+			if self._expose_neighbor_reviews and dep_node.review_summary:
 				neighbor_reviews.append(f"{dep_id}: {dep_node.review_summary}")
 
 		for depd_id in dependent_ranked:
@@ -110,10 +112,10 @@ class ObservationBuilder:
 					module_id=depd_id,
 					relation="dependent",
 					summary=depd_node.summary or depd_node.ast_summary,
-					review_snippet=depd_node.review_summary,
+					review_snippet=depd_node.review_summary if self._expose_neighbor_reviews else None,
 				)
 			)
-			if depd_node.review_summary:
+			if self._expose_neighbor_reviews and depd_node.review_summary:
 				neighbor_reviews.append(f"{depd_id}: {depd_node.review_summary}")
 
 		requested_context: RequestedContext | None = None

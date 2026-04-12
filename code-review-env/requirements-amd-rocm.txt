@@ -1,0 +1,10 @@
+# PyTorch for AMD GPUs (ROCm). Default PyPI installs NVIDIA CUDA wheels (+cu12x) — they never enable torch.cuda on Radeon.
+#
+# Install (from this directory, venv active):
+#   export HSA_OVERRIDE_GFX_VERSION=11.0.0   # RX 7900 GRE / RDNA3 if needed
+#   pip install -r requirements-amd-rocm.txt --index-url https://download.pytorch.org/whl/rocm7.1/
+#
+# Pick an index that matches /opt/rocm (e.g. rocm7.1). Unsloth currently requires torch<2.11.
+torch==2.10.0+rocm7.1
+torchvision==0.25.0+rocm7.1
+torchaudio==2.10.0+rocm7.1

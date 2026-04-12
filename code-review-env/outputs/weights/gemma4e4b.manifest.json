@@ -1,0 +1,7 @@
+{
+  "created_at": "2026-04-09T04:34:23.250735+00:00",
+  "model_name": "gemma4:e4b",
+  "sha256": "913d2f1ec81f238e16c26dc3ba4f24304a47558c501066633ebe7f8b5c8c639c",
+  "size_bytes": 7074922880,
+  "source_path": "/home/lightdesk/Downloads/Projects/NodeAudit/Models/gemma-4-E4B-it-Q6_K.gguf"
+}

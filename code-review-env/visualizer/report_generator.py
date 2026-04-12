@@ -113,7 +113,7 @@ def _compatible_finding_ids(action_type: str, findings: list[LinterFinding]) -> 
             ids.append(finding.id)
         elif action_type == "FLAG_STYLE" and finding.tool != "bandit" and finding.severity.value == "low":
             ids.append(finding.id)
-        elif action_type == "FLAG_BUG" and (finding.tool == "pyflakes" or finding.severity.value in {"medium", "high"}):
+        elif action_type == "FLAG_BUG" and finding.severity.value in {"medium", "high"}:
             ids.append(finding.id)
     return ids
 

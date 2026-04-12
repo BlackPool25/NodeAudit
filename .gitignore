@@ -6,3 +6,7 @@ code-review-env/code_review_env.db
 Whatsapp-Bot
 OpenEnv
 Models
+training_corpus/
+outputs/corpus_dbs/
+training_corpus
+code-review-env/unsloth_compiled_cache/

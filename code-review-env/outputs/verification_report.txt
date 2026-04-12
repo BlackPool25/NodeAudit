@@ -1,0 +1,41 @@
+
+=== SECTION 1: AMD ROCm + Unsloth Setup ===
+PASS: ROCm/CUDA available
+PASS: Unsloth import check passed
+PASS: QLoRA AMD guard check passed
+PASS: Gemma4 gradient checkpointing guard passed
+
+=== SECTION 2: Static Analysis Pipeline ===
+PASS: Semgrep removed from core runtime paths
+PASS: Pyright JSON check passed (1 errors on test file)
+PASS: AST checker known-pattern checks passed
+PASS: Pipeline findings check passed (14)
+
+=== SECTION 3: Agent + Judge ===
+PASS: Thinking trace extraction check passed
+WARNING: HF_TOKEN missing; skipping live judge API scoring check
+PASS: Composite reward formula check passed
+
+=== SECTION 4: Training Data Quality ===
+FAIL: Training records too low: 30
+PASS: Reasoning ratio check passed: 100%
+PASS: DPO pairs spot-check passed (0)
+PASS: No direct eval-module leakage in module_id field
+
+=== SECTION 5: RL Environment Integrity ===
+WARNING: openenv CLI not available; skipping openenv validate
+PASS: Environment reward-range check passed
+
+=== SECTION 6: HF Deployment Readiness ===
+PASS: Dockerfile port and CMD check passed
+PASS: server/app.py runtime GPU import guard passed
+PASS: inference.py environment-variable check passed
+
+=== SECTION 7: Inference Script Compliance ===
+PASS: END payload fields check passed
+PASS: Recall threshold check passed (0.268)
+PASS: Baseline reproducibility check passed: [1.0, 1.0, 1.0]
+
+=== SECTION 8: Training Graph Output ===
+PASS: Training graph structure check passed
+PASS: Training graph annotation text check passed
