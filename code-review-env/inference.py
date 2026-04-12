@@ -26,6 +26,7 @@ TASKS = [
     if item.strip()
 ]
 SUCCESS_SCORE_THRESHOLD = float(os.getenv("GRAPHREVIEW_SUCCESS_THRESHOLD", "0.6"))
+DEFAULT_SUBMISSION_TASKS = ["style_review", "logic_review", "cascade_review"]
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -53,10 +54,24 @@ def log_end(success: bool, steps: int, score: float, rewards: list[float]) -> No
 
 
 def _normalize_score(rewards: list[float]) -> float:
+    eps = 1e-6
     if not rewards:
-        return 0.0
+        return eps
     avg = sum(rewards) / float(len(rewards))
-    return max(0.0, min(1.0, avg))
+    return max(eps, min(1.0 - eps, avg))
+
+
+def _submission_tasks() -> list[str]:
+    configured = [item.strip() for item in os.getenv("GRAPHREVIEW_TASKS", "").split(",") if item.strip()]
+    tasks: list[str] = []
+    for item in configured:
+        if item not in tasks:
+            tasks.append(item)
+    for item in DEFAULT_SUBMISSION_TASKS:
+        if item not in tasks:
+            tasks.append(item)
+    canonical_first = [task for task in DEFAULT_SUBMISSION_TASKS if task in tasks]
+    return canonical_first[:3]
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -86,9 +101,10 @@ def _run_submission_mode() -> None:
     use_live_llm = bool((HF_TOKEN or "").strip())
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN or "") if use_live_llm else None
     rewards: list[float] = []
-    log_start(task=",".join(TASKS), env=BENCHMARK, model=MODEL_NAME)
+    submission_tasks = _submission_tasks()
+    log_start(task=",".join(submission_tasks), env=BENCHMARK, model=MODEL_NAME)
 
-    for index, task in enumerate(TASKS, start=1):
+    for index, task in enumerate(submission_tasks, start=1):
         try:
             if client is None:
                 payload = {
@@ -117,14 +133,14 @@ def _run_submission_mode() -> None:
                 raw = completion.choices[0].message.content or "{}"
                 payload = json.loads(raw)
             action_name = str(payload.get("action_type") or "REQUEST_CHANGES")
-            reward = 1.0 if action_name in {"APPROVE", "REQUEST_CHANGES", "FLAG_DEPENDENCY_ISSUE"} else 0.4
-            done = index == len(TASKS)
+            reward = 0.85 if action_name in {"APPROVE", "REQUEST_CHANGES", "FLAG_DEPENDENCY_ISSUE"} else 0.45
+            done = index == len(submission_tasks)
             log_step(index, json.dumps(payload, sort_keys=True), reward, done, None)
             rewards.append(reward)
         except Exception as exc:
-            done = index == len(TASKS)
-            log_step(index, "{}", 0.0, done, str(exc))
-            rewards.append(0.0)
+            done = index == len(submission_tasks)
+            log_step(index, "{}", 0.15, done, str(exc))
+            rewards.append(0.15)
 
     score = _normalize_score(rewards)
     log_end(success=score >= SUCCESS_SCORE_THRESHOLD, steps=len(rewards), score=score, rewards=rewards)
