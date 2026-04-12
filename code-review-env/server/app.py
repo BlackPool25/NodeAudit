@@ -64,7 +64,9 @@ class TaskRunResponse(BaseModel):
 
 	episode_id: str
 	total_steps: int
+	raw_total_reward: float
 	total_reward: float
+	score: float
 	modules_total: int
 	modules_completed: int
 	done: bool
@@ -222,6 +224,18 @@ TrainingRunAnalysisResponse.model_rebuild()
 OUTPUT_ROOT = Path(os.getenv("GRAPHREVIEW_OUTPUT_DIR", "outputs")).resolve()
 UI_INDEX_PATH = Path(__file__).resolve().parent / "static" / "index.html"
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
+
+
+def _strict_score_from_reward(total_reward: float, total_steps: int) -> float:
+	# Map average per-step reward to (0, 1) and avoid exact endpoints required by validator.
+	eps = 1e-6
+	avg_reward = total_reward / max(total_steps, 1)
+	score = (avg_reward + 1.0) / 2.0
+	if score <= eps:
+		return eps
+	if score >= 1.0 - eps:
+		return 1.0 - eps
+	return score
 
 
 def _default_source_root() -> str:
@@ -544,10 +558,13 @@ def run_task(task_id: str, payload: TaskRunRequest) -> TaskRunResponse:
 		if done:
 			break
 
+	normalized_score = _strict_score_from_reward(total_reward=total_reward, total_steps=total_steps)
 	return TaskRunResponse(
 		episode_id=episode_id,
 		total_steps=total_steps,
-		total_reward=total_reward,
+		raw_total_reward=total_reward,
+		total_reward=normalized_score,
+		score=normalized_score,
 		modules_total=modules_total,
 		modules_completed=len(completed_modules),
 		done=done,
