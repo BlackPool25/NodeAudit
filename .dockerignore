@@ -1,0 +1,26 @@
+# Keep Docker build context small for HF/CI builders.
+.git/
+.gitignore
+.env
+.env.*
+
+# Large local artifacts and model weights (not needed by runtime image build).
+Models/
+outputs/
+training_corpus/
+
+code-review-env/Models/
+code-review-env/outputs/
+code-review-env/training/
+code-review-env/unsloth_compiled_cache/
+code-review-env/.venv/
+
+# Caches and temporary files.
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.DS_Store

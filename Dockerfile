@@ -1,9 +1,20 @@
 FROM python:3.11-slim
 
 WORKDIR /app/code-review-env
-RUN apt-get update && apt-get install -y --no-install-recommends git curl nodejs npm && rm -rf /var/lib/apt/lists/*
+
+# Install system dependencies and uv in a single layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl nodejs npm \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add uv to PATH
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Copy and install Python dependencies using uv for speed
 COPY code-review-env/requirements.txt /app/code-review-env/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
+
 COPY code-review-env /app/code-review-env
 
 ENV GRAPHREVIEW_SOURCE_ROOT=/app/code-review-env/sample_project

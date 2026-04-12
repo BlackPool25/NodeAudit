@@ -8,7 +8,7 @@ import sys
 import uvicorn
 import networkx as nx
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -197,6 +197,26 @@ class TrainingRunAnalysisResponse(BaseModel):
 	model_name: str
 	analysis: str
 	non_scoring: bool = True
+
+
+ResetRequest.model_rebuild()
+ResetResponse.model_rebuild()
+StepRequest.model_rebuild()
+TaskRunRequest.model_rebuild()
+TaskRunResponse.model_rebuild()
+AccuracyReport.model_rebuild()
+ReportGenerateRequest.model_rebuild()
+ReportGenerateResponse.model_rebuild()
+ResultSummary.model_rebuild()
+ConnectivitySummary.model_rebuild()
+ResultDetail.model_rebuild()
+AnalyzerRunRequest.model_rebuild()
+AnalyzerRunResponse.model_rebuild()
+TrainingBootstrapResponse.model_rebuild()
+TrainingRunRequest.model_rebuild()
+TrainingRunResponse.model_rebuild()
+TrainingRunRecord.model_rebuild()
+TrainingRunAnalysisResponse.model_rebuild()
 
 
 OUTPUT_ROOT = Path(os.getenv("GRAPHREVIEW_OUTPUT_DIR", "outputs")).resolve()
@@ -418,7 +438,8 @@ def tasks() -> list[dict[str, object]]:
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset(payload: ResetRequest) -> ResetResponse:
+def reset(payload: ResetRequest | None = Body(default=None)) -> ResetResponse:
+	payload = payload or ResetRequest()
 	try:
 		observation = ENV.reset(
 			task_id=payload.task_id,
