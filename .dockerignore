@@ -5,7 +5,6 @@
 .env.*
 
 # Large local artifacts and model weights (not needed by runtime image build).
-Models/
 outputs/
 training_corpus/
 
