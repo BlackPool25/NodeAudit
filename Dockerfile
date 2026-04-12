@@ -5,6 +5,7 @@ WORKDIR /app/code-review-env
 # Install system dependencies and uv in a single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl nodejs npm \
+    build-essential cmake ninja-build pkg-config \
     && rm -rf /var/lib/apt/lists/* \
     && curl -LsSf https://astral.sh/uv/install.sh | sh
 
